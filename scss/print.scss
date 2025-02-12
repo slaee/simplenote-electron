@@ -1,3 +1,5 @@
+@use '~@automattic/color-studio/dist/color-variables' as *;
+
 @media print {
   html {
     -ms-overflow-style: -ms-autohiding-scrollbar;

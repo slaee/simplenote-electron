@@ -1,3 +1,5 @@
+@use 'variables' as *;
+
 /*
  * Regenerate the Simplenote Tasks font with the following script.
  * Download the SVG task icons from the Simplecons repo
@@ -32,7 +34,7 @@
   padding: 0 calc((100% - 768px) / 2);
 }
 
-@media only screen and (max-width: 1400px) {
+@media only screen and (width <= 1400px) {
   .note-detail-preview,
   .note-content-plaintext.visible {
     padding: 0 10%;
@@ -58,7 +60,7 @@ span[dir='ltr'] {
   }
 }
 
-@media only screen and (max-width: 1400px) {
+@media only screen and (width <= 1400px) {
   span[dir='ltr'] {
     margin-right: 14%;
   }
@@ -74,7 +76,9 @@ span[dir='ltr'] {
     }
   }
 }
+
 // scrollbar search highlights
+/* stylelint-disable-next-line selector-class-pattern */
 .decorationsOverviewRuler {
   width: 10px !important;
   right: -2px !important;
@@ -91,9 +95,11 @@ span[dir='ltr'] {
     border-radius: 10px;
     border: 3px solid gray;
   }
+
   .search-decoration {
     background-color: var(--search-highlight-color);
   }
+
   .selected-search {
     background-color: var(--search-selection-color);
     padding: 2px 0;

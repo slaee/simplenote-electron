@@ -1,3 +1,6 @@
+@use 'sass:meta';
+@use '../../scss/variables' as *;
+
 .note-detail-wrapper {
   position: relative;
   overflow: hidden;
@@ -61,7 +64,8 @@
   background: var(--background-color);
   resize: none;
   -webkit-tap-highlight-color: transparent;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: anywhere;
 
   &:focus {
     outline: none;
@@ -83,10 +87,15 @@
 }
 
 body[data-theme='light'] .note-detail-markdown {
-  @import '../node_modules/highlight.js/scss/base16/solarized-light.scss';
+  @include meta.load-css(
+    '../../node_modules/highlight.js/scss/base16/solarized-light'
+  );
 }
+
 body[data-theme='dark'] .note-detail-markdown {
-  @import '../node_modules/highlight.js/scss/base16/solarized-dark.scss';
+  @include meta.load-css(
+    '../../node_modules/highlight.js/scss/base16/solarized-dark'
+  );
 }
 
 .note-detail-markdown {

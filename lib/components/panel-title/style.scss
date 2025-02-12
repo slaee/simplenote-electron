@@ -1,3 +1,5 @@
+@use '../../../scss/variables' as *;
+
 .panel-title {
   color: var(--foreground-color);
   margin: 0 0 0.5em;

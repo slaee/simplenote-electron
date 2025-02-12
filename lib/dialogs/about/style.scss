@@ -1,3 +1,6 @@
+@use '~@automattic/color-studio/dist/color-variables' as *;
+@use '../../../scss/variables' as *;
+
 .about {
   .dialog {
     position: relative;
@@ -12,6 +15,7 @@
 
     background: var(--accent-color) !important;
     color: var(--background-color) !important;
+
     a {
       color: var(--background-color);
     }
@@ -60,10 +64,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba($studio-white, 0.25);
+    border-bottom: 1px solid #{rgba($studio-white, 0.2)};
 
     &:first-child {
-      border-top: 1px solid rgba($studio-white, 0.25);
+      border-top: 1px solid #{rgba($studio-white, 0.25)};
     }
   }
 
@@ -95,6 +99,7 @@
   top: 0;
   right: 0;
   padding: 20px;
+  border: 0;
 
   & svg,
   &:active svg {

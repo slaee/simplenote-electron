@@ -1,3 +1,4 @@
+/* stylelint-disable-next-line selector-class-pattern */
 .ReactModal__Overlay {
   z-index: 1000;
 }
@@ -168,6 +169,7 @@ body {
   line-height: 22px;
   text-align: center;
   width: 320px;
+
   .button {
     width: 95%;
   }

@@ -1,7 +1,8 @@
+@use 'variables' as *;
+@use 'mixins';
+
 // Resets button styles
 button {
-  @extend %smart-focus-outline;
-
   background: transparent;
   border: none;
   padding: 0;
@@ -9,6 +10,14 @@ button {
   font-size: 14px;
   appearance: none;
   vertical-align: baseline;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: $focus-outline;
+  }
 
   svg {
     cursor: pointer;
@@ -44,6 +53,7 @@ button {
     background: var(--primary-button-bg-color);
     color: var(--primary-button-fg-color);
   }
+
   &[disabled],
   &:disabled {
     opacity: 0.5;
@@ -96,7 +106,7 @@ button {
   display: flex;
   flex-direction: row;
 
-  //Individual segmented control buttons
+  // Individual segmented control buttons
   .button-segmented-control {
     border-radius: 0;
     border-left-width: 0;

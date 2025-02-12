@@ -1,3 +1,5 @@
+@use '../../scss/variables' as *;
+
 .note-actions {
   background-color: var(--background-color);
   width: 200px;
@@ -46,6 +48,7 @@
 
   .note-actions-item-disabled {
     color: var(--disabled-text-color);
+
     &:hover {
       background-color: transparent;
     }

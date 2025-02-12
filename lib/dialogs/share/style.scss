@@ -1,3 +1,5 @@
+@use '../../../scss/variables' as *;
+
 .share-collaborators-heading {
   border-bottom: 1px solid var(--secondary-color);
 }

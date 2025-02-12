@@ -1,3 +1,5 @@
+@use '../../scss/variables' as *;
+
 .navigation-bar {
   background-color: var(--background-color);
   display: flex;

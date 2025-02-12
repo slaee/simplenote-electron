@@ -1,3 +1,5 @@
+@use '../../scss/variables' as *;
+
 .app-layout {
   display: flex;
   flex: 1 0 auto;
@@ -12,6 +14,7 @@
         width 0.2s ease-in-out,
         opacity 0.2s ease-in-out;
     }
+
     .app-layout__note-column {
       border-left-width: 0;
       transition: border-left-width 0.2s;
@@ -23,6 +26,7 @@
         opacity: 1;
         width: inherit;
       }
+
       .app-layout__note-column {
         transition: inherit;
       }
@@ -96,10 +100,12 @@
       opacity: 1;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.85;
       transform: scale(1.05);
     }
+
     100% {
       opacity: 1;
       transform: scale(1);
