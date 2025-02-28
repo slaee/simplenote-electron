@@ -42,7 +42,7 @@ const toSearchNote = (note: Partial<T.Note>): SearchNote => ({
   creationDate: note.creationDate ?? Date.now() / 1000,
   modificationDate: note.modificationDate ?? Date.now() / 1000,
   isPinned: note.systemTags?.includes('pinned') ?? false,
-  isTrashed: !!note.deleted ?? false,
+  isTrashed: !!note.deleted,
 });
 
 export const tagsFromSearch = (query: string) => {
@@ -311,8 +311,8 @@ export const middleware: S.Middleware = (store) => {
     const noteAt = filteredNotes.findIndex((noteId) => noteId === openedNote);
     const nextNoteToOpen =
       noteAt === -1
-        ? filteredNotes[0] ?? null
-        : filteredNotes[noteAt + 1] ?? filteredNotes[noteAt - 1] ?? null;
+        ? (filteredNotes[0] ?? null)
+        : (filteredNotes[noteAt + 1] ?? filteredNotes[noteAt - 1] ?? null);
 
     return {
       ...action,

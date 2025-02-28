@@ -177,7 +177,7 @@ export class RevisionSelector extends Component<Props> {
                 </button>
                 <button
                   aria-label={`Restore revision from ${revisionDate}`}
-                  disabled={isNewest}
+                  disabled={!!isNewest}
                   className="button button-primary button-compact"
                   onClick={this.onAcceptRevision}
                 >
@@ -196,7 +196,7 @@ const mapStateToProps: S.MapState<StateProps> = (state) => {
   const noteId = state.ui.openedNote;
   const openedRevision =
     state.ui.openedRevision?.[0] === state.ui.openedNote
-      ? state.ui.openedRevision?.[1] ?? null
+      ? (state.ui.openedRevision?.[1] ?? null)
       : null;
   const restoreDeletedTags = state.ui.restoreDeletedTags;
 
