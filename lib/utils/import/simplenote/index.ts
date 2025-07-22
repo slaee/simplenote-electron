@@ -17,19 +17,13 @@ class SimplenoteImporter extends EventEmitter {
   }
 
   importNotes = (filesArray) => {
-    const coreImporter = new CoreImporter(this.addNote);
-
     if (isEmpty(filesArray)) {
       this.emit('status', 'error', 'No file to import.');
       return;
     }
 
     const file = filesArray[0];
-
-    if (!endsWith(file.name.toLowerCase(), '.json')) {
-      this.emit('status', 'error', 'File name does not end in ".json".');
-      return;
-    }
+    const fileName = file.name.toLowerCase();
 
     // Limit file size we will read to 5mb
     if (file.size > 5000000) {
@@ -37,6 +31,20 @@ class SimplenoteImporter extends EventEmitter {
       return;
     }
 
+    // if (endsWith(fileName, '.json')) {
+    //   this.processJsonFile(file);
+    //   return;
+    // }
+
+    if (endsWith(fileName, '.zip')) {
+      this.processZipFile(file);
+    }
+
+    this.emit('status', 'error', 'File must be a .json or .zip file.');
+  };
+
+  processJsonFile = (file, coreImporter) => {
+    const coreImporter = new CoreImporter(this.addNote);
     const fileReader = new FileReader();
 
     fileReader.onload = (event) => {
@@ -47,31 +55,34 @@ class SimplenoteImporter extends EventEmitter {
         return;
       }
 
-      let dataObj;
-      try {
-        dataObj = JSON.parse(fileContent);
-      } catch (error) {
-        this.emit('status', 'error', 'Invalid json file.');
-        return;
-      }
-
-      const noteCount =
-        dataObj.activeNotes.length + dataObj.trashedNotes.length;
-      const processedNotes = {
-        activeNotes: convertModificationDates(dataObj.activeNotes),
-        trashedNotes: convertModificationDates(dataObj.trashedNotes),
-      };
-
-      coreImporter.importNotes(processedNotes, this.options).then(() => {
-        this.emit('status', 'complete', noteCount);
-        this.recordEvent('importer_import_completed', {
-          source: 'simplenote',
-          note_count: noteCount,
-        });
-      });
+      this.parseAndImportJson(fileContent, coreImporter);
     };
 
     fileReader.readAsText(file);
+  };
+
+  parseAndImportJson = (jsonContent, coreImporter) => {
+    let dataObj;
+    try {
+      dataObj = JSON.parse(jsonContent);
+    } catch (error) {
+      this.emit('status', 'error', 'Invalid JSON file.');
+      return;
+    }
+
+    const noteCount = dataObj.activeNotes.length + dataObj.trashedNotes.length;
+    const processedNotes = {
+      activeNotes: convertModificationDates(dataObj.activeNotes),
+      trashedNotes: convertModificationDates(dataObj.trashedNotes),
+    };
+
+    coreImporter.importNotes(processedNotes, this.options).then(() => {
+      this.emit('status', 'complete', noteCount);
+      this.recordEvent('importer_import_completed', {
+        source: 'simplenote',
+        note_count: noteCount,
+      });
+    });
   };
 }
 
