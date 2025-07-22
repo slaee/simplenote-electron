@@ -2,6 +2,14 @@ import SimplenoteImporter, { convertModificationDates } from './';
 import CoreImporter from '../';
 jest.mock('../');
 
+// Mock FileReader
+global.FileReader = jest.fn(() => ({
+  readAsText: jest.fn(),
+  readAsArrayBuffer: jest.fn(),
+  result: null,
+  onload: null,
+})) as any;
+
 describe('SimplenoteImporter', () => {
   let importer;
 
@@ -39,6 +47,104 @@ describe('SimplenoteImporter', () => {
         done();
       });
       importer.importNotes([new File([JSON.stringify(notes)], 'foo.json')]);
+    });
+  });
+
+  describe('ZIP file import', () => {
+    it('should process ZIP files by calling processZipFile method', () => {
+      const zipFile = new File(['content'], 'test.zip', {
+        type: 'application/zip',
+      });
+      importer.processZipFile = jest.fn();
+
+      importer.importNotes([zipFile]);
+
+      expect(importer.processZipFile).toHaveBeenCalledWith(zipFile);
+    });
+
+    it('should emit error when ZIP file is empty in processZipFile', () => {
+      const zipFile = new File([''], 'test.zip', { type: 'application/zip' });
+      const mockFileReader = new FileReader();
+      (FileReader as any).mockImplementation(() => mockFileReader);
+
+      importer.processZipFile(zipFile);
+
+      mockFileReader.result = null;
+      mockFileReader.onload({ target: { result: null } });
+
+      expect(importer.emit).toHaveBeenCalledWith(
+        'status',
+        'error',
+        'File was empty.'
+      );
+    });
+
+    it('should call readAsArrayBuffer for ZIP files', () => {
+      const zipFile = new File(['content'], 'test.zip', {
+        type: 'application/zip',
+      });
+      const mockFileReader = new FileReader();
+      mockFileReader.readAsArrayBuffer = jest.fn();
+      (FileReader as any).mockImplementation(() => mockFileReader);
+
+      importer.processZipFile(zipFile);
+
+      expect(mockFileReader.readAsArrayBuffer).toHaveBeenCalledWith(zipFile);
+    });
+
+    it('should handle missing activeNotes in JSON from ZIP', () => {
+      const incompleteJsonContent = JSON.stringify({
+        trashedNotes: [],
+      });
+
+      importer.parseAndImportJson(incompleteJsonContent);
+
+      expect(importer.emit).toHaveBeenCalledWith(
+        'status',
+        'error',
+        'Invalid Simplenote JSON format.'
+      );
+    });
+
+    it('should handle missing trashedNotes in JSON from ZIP', () => {
+      const incompleteJsonContent = JSON.stringify({
+        activeNotes: [],
+      });
+
+      importer.parseAndImportJson(incompleteJsonContent);
+
+      expect(importer.emit).toHaveBeenCalledWith(
+        'status',
+        'error',
+        'Invalid Simplenote JSON format.'
+      );
+    });
+
+    it('should correctly identify and process JSON files in ZIP', () => {
+      // Test that the file type detection works correctly for ZIP files
+      const zipFile = new File(['zip-content'], 'export.zip', {
+        type: 'application/zip',
+      });
+      const jsonFile = new File(['json-content'], 'export.json', {
+        type: 'application/json',
+      });
+
+      importer.processZipFile = jest.fn();
+      importer.processJsonFile = jest.fn();
+
+      // Test ZIP file processing
+      importer.importNotes([zipFile]);
+      expect(importer.processZipFile).toHaveBeenCalledWith(zipFile);
+      expect(importer.processJsonFile).not.toHaveBeenCalled();
+
+      // Reset mocks
+      importer.processZipFile.mockClear();
+      importer.processJsonFile.mockClear();
+
+      // Test JSON file processing
+      importer.importNotes([jsonFile]);
+      expect(importer.processJsonFile).toHaveBeenCalledWith(jsonFile);
+      expect(importer.processZipFile).not.toHaveBeenCalled();
     });
   });
 
