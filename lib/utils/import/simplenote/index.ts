@@ -72,6 +72,11 @@ class SimplenoteImporter extends EventEmitter {
       return;
     }
 
+    if (!dataObj.activeNotes || !Array.isArray(dataObj.activeNotes)) {
+      this.emit('status', 'error', 'Invalid Simplenote JSON format.');
+      return;
+    }
+
     const noteCount = dataObj.activeNotes.length + dataObj.trashedNotes.length;
     const processedNotes = {
       activeNotes: convertModificationDates(dataObj.activeNotes),

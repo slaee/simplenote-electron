@@ -92,6 +92,20 @@ describe('SimplenoteImporter', () => {
       expect(mockFileReader.readAsArrayBuffer).toHaveBeenCalledWith(zipFile);
     });
 
+    it('should handle missing activeNotes in JSON from ZIP', () => {
+      const incompleteJsonContent = JSON.stringify({
+        trashedNotes: [],
+      });
+
+      importer.parseAndImportJson(incompleteJsonContent);
+
+      expect(importer.emit).toHaveBeenCalledWith(
+        'status',
+        'error',
+        'Invalid Simplenote JSON format.'
+      );
+    });
+
     it('should correctly identify and process JSON files in ZIP', () => {
       // Test that the file type detection works correctly for ZIP files
       const zipFile = new File(['zip-content'], 'export.zip', {
