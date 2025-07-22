@@ -31,10 +31,10 @@ class SimplenoteImporter extends EventEmitter {
       return;
     }
 
-    // if (endsWith(fileName, '.json')) {
-    //   this.processJsonFile(file);
-    //   return;
-    // }
+    if (endsWith(fileName, '.json')) {
+      this.processJsonFile(file);
+      return;
+    }
 
     if (endsWith(fileName, '.zip')) {
       this.processZipFile(file);
@@ -43,7 +43,7 @@ class SimplenoteImporter extends EventEmitter {
     this.emit('status', 'error', 'File must be a .json or .zip file.');
   };
 
-  processJsonFile = (file, coreImporter) => {
+  processJsonFile = (file) => {
     const coreImporter = new CoreImporter(this.addNote);
     const fileReader = new FileReader();
 
