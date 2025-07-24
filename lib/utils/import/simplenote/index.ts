@@ -107,17 +107,17 @@ class SimplenoteImporter extends EventEmitter {
         .then(({ default: JSZip }) => JSZip.loadAsync(fileContent))
         .then((zip) => {
           // Look for JSON files in the ZIP
-          const jsonFiles = Object.keys(zip.files).filter((filename) =>
-            filename.toLowerCase().endsWith('.json')
+          const jsonFileEntry = Object.entries(zip.files).find(
+            ([path]) => path.toLowerCase() === 'source/notes.json'
           );
 
-          if (jsonFiles.length === 0) {
+          if (!jsonFileEntry) {
             this.emit('status', 'error', 'No JSON files found in ZIP archive.');
             return;
           }
 
           // Process the first JSON file found
-          const jsonFile = zip.files[jsonFiles[0]];
+          const jsonFile = jsonFileEntry[1];
           return jsonFile.async('text');
         })
         .then((jsonContent) => {
