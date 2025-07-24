@@ -79,12 +79,23 @@ describe('SimplenoteImporter', () => {
       );
     });
 
-    it('should handle missing activeNotes in JSON from ZIP', () => {
+    it('should handle missing activeNotes in JSON', () => {
       const incompleteJsonContent = JSON.stringify({
         trashedNotes: [],
       });
 
-      importer.parseAndImportJson(incompleteJsonContent);
+      const jsonFile = new File([incompleteJsonContent], 'notes.json', {
+        type: 'application/json',
+      });
+
+      const mockFileReader = new FileReader();
+      (FileReader as any).mockImplementation(() => mockFileReader);
+
+      importer.importNotes([jsonFile]);
+
+      // Simulate the FileReader onload event with the incomplete JSON content
+      mockFileReader.result = incompleteJsonContent;
+      mockFileReader.onload({ target: { result: incompleteJsonContent } });
 
       expect(importer.emit).toHaveBeenCalledWith(
         'status',
