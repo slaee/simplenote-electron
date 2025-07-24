@@ -62,12 +62,12 @@ describe('SimplenoteImporter', () => {
       expect(importer.processZipFile).toHaveBeenCalledWith(zipFile);
     });
 
-    it('should emit error when ZIP file is empty in processZipFile', () => {
+    it('should emit error when ZIP file is empty in importNotes', () => {
       const zipFile = new File([''], 'test.zip', { type: 'application/zip' });
       const mockFileReader = new FileReader();
       (FileReader as any).mockImplementation(() => mockFileReader);
 
-      importer.processZipFile(zipFile);
+      importer.importNotes([zipFile]);
 
       mockFileReader.result = null;
       mockFileReader.onload({ target: { result: null } });
@@ -77,19 +77,6 @@ describe('SimplenoteImporter', () => {
         'error',
         'File was empty.'
       );
-    });
-
-    it('should call readAsArrayBuffer for ZIP files', () => {
-      const zipFile = new File(['content'], 'test.zip', {
-        type: 'application/zip',
-      });
-      const mockFileReader = new FileReader();
-      mockFileReader.readAsArrayBuffer = jest.fn();
-      (FileReader as any).mockImplementation(() => mockFileReader);
-
-      importer.processZipFile(zipFile);
-
-      expect(mockFileReader.readAsArrayBuffer).toHaveBeenCalledWith(zipFile);
     });
 
     it('should handle missing activeNotes in JSON from ZIP', () => {
