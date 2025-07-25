@@ -17,19 +17,13 @@ class SimplenoteImporter extends EventEmitter {
   }
 
   importNotes = (filesArray) => {
-    const coreImporter = new CoreImporter(this.addNote);
-
     if (isEmpty(filesArray)) {
       this.emit('status', 'error', 'No file to import.');
       return;
     }
 
     const file = filesArray[0];
-
-    if (!endsWith(file.name.toLowerCase(), '.json')) {
-      this.emit('status', 'error', 'File name does not end in ".json".');
-      return;
-    }
+    const fileName = file.name.toLowerCase();
 
     // Limit file size we will read to 5mb
     if (file.size > 5000000) {
@@ -37,6 +31,20 @@ class SimplenoteImporter extends EventEmitter {
       return;
     }
 
+    if (endsWith(fileName, '.json')) {
+      this.processJsonFile(file);
+      return;
+    }
+
+    if (endsWith(fileName, '.zip')) {
+      this.processZipFile(file);
+      return;
+    }
+
+    this.emit('status', 'error', 'File must be a .json or .zip file.');
+  };
+
+  processJsonFile = (file) => {
     const fileReader = new FileReader();
 
     fileReader.onload = (event) => {
@@ -47,31 +55,88 @@ class SimplenoteImporter extends EventEmitter {
         return;
       }
 
-      let dataObj;
-      try {
-        dataObj = JSON.parse(fileContent);
-      } catch (error) {
-        this.emit('status', 'error', 'Invalid json file.');
-        return;
-      }
-
-      const noteCount =
-        dataObj.activeNotes.length + dataObj.trashedNotes.length;
-      const processedNotes = {
-        activeNotes: convertModificationDates(dataObj.activeNotes),
-        trashedNotes: convertModificationDates(dataObj.trashedNotes),
-      };
-
-      coreImporter.importNotes(processedNotes, this.options).then(() => {
-        this.emit('status', 'complete', noteCount);
-        this.recordEvent('importer_import_completed', {
-          source: 'simplenote',
-          note_count: noteCount,
-        });
-      });
+      this.parseAndImportJson(fileContent);
     };
 
     fileReader.readAsText(file);
+  };
+
+  parseAndImportJson = (jsonContent) => {
+    const coreImporter = new CoreImporter(this.addNote);
+    let dataObj;
+
+    try {
+      dataObj = JSON.parse(jsonContent);
+    } catch (error) {
+      this.emit('status', 'error', 'Invalid JSON file.');
+      return;
+    }
+
+    if (!dataObj.activeNotes || !Array.isArray(dataObj.activeNotes)) {
+      this.emit('status', 'error', 'Invalid Simplenote JSON format.');
+      return;
+    }
+
+    const noteCount = dataObj.activeNotes.length + dataObj.trashedNotes.length;
+    const processedNotes = {
+      activeNotes: convertModificationDates(dataObj.activeNotes),
+      trashedNotes: convertModificationDates(dataObj.trashedNotes),
+    };
+
+    coreImporter.importNotes(processedNotes, this.options).then(() => {
+      this.emit('status', 'complete', noteCount);
+      this.recordEvent('importer_import_completed', {
+        source: 'simplenote',
+        note_count: noteCount,
+      });
+    });
+  };
+
+  processZipFile = (file) => {
+    const fileReader = new FileReader();
+
+    fileReader.onload = (event) => {
+      const fileContent = event.target.result;
+
+      if (!fileContent) {
+        this.emit('status', 'error', 'File was empty.');
+        return;
+      }
+
+      import(/* webpackChunkName: 'jszip' */ 'jszip')
+        .then(({ default: JSZip }) => JSZip.loadAsync(fileContent))
+        .then((zip) => {
+          // Look for JSON files in the ZIP
+          const jsonFileEntry = Object.entries(zip.files).find(
+            ([path]) => path.toLowerCase() === 'source/notes.json'
+          );
+
+          if (!jsonFileEntry) {
+            this.emit('status', 'error', 'No JSON files found in ZIP archive.');
+            return;
+          }
+
+          // Process the first JSON file found
+          const jsonFile = jsonFileEntry[1];
+          return jsonFile.async('text');
+        })
+        .then((jsonContent) => {
+          if (!jsonContent) {
+            return;
+          }
+
+          this.parseAndImportJson(jsonContent);
+        })
+        .catch((error) => {
+          this.emit(
+            'status',
+            'error',
+            'Failed to process ZIP file: ' + error.message
+          );
+        });
+    };
+
+    fileReader.readAsArrayBuffer(file);
   };
 }
 

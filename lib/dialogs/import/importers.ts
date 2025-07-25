@@ -7,7 +7,7 @@ type Importer = {
 
 const simplenoteImporter: Importer = {
   name: 'simplenote',
-  fileTypes: ['json'],
+  fileTypes: ['json', 'zip'],
 };
 
 const evernoteImporter: Importer = {
@@ -47,6 +47,9 @@ export const forFilename = (file: String): Importer => {
 
   switch (fileExtension) {
     case 'json':
+      return simplenoteImporter;
+
+    case 'zip':
       return simplenoteImporter;
 
     case 'enex':
