@@ -130,6 +130,21 @@
   white-space: nowrap;
 }
 
+.navigation-bar__rename-input {
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--secondary-color);
+  background: var(--background-color);
+  color: var(--primary-color);
+  outline: none;
+}
+
+.navigation-bar__rename-input:focus {
+  border-color: var(--accent-color);
+}
+
 .navigation-bar__folder-delete {
   flex: none;
   width: 28px;

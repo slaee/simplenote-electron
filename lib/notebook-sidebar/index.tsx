@@ -56,6 +56,30 @@ export const NotebookSidebar = ({
   const [expandedNotebooks, setExpandedNotebooks] = useState<Set<T.NotebookId>>(
     () => new Set(Array.from(notebooks.keys()))
   );
+  const [editingNotebookId, setEditingNotebookId] =
+    useState<T.NotebookId | null>(null);
+  const [editingFolderId, setEditingFolderId] = useState<T.FolderId | null>(
+    null
+  );
+  const [draftName, setDraftName] = useState<string>('');
+
+  const confirmDelete = (title: string, message: string) => {
+    const electronConfirm = (window as any).electron?.confirm;
+    if (typeof electronConfirm === 'function') {
+      return electronConfirm({ title, message });
+    }
+    return window.confirm(message);
+  };
+
+  const nextUniqueName = (base: string, existingNames: string[]) => {
+    const set = new Set(existingNames.map((n) => n.toLowerCase()));
+    if (!set.has(base.toLowerCase())) return base;
+    for (let i = 2; i < 500; i++) {
+      const candidate = `${base} (${i})`;
+      if (!set.has(candidate.toLowerCase())) return candidate;
+    }
+    return `${base} (${Date.now()})`;
+  };
 
   const foldersByNotebook = useMemo(() => {
     const map = new Map<T.NotebookId, Array<[T.FolderId, T.Folder]>>();
@@ -101,36 +125,87 @@ export const NotebookSidebar = ({
     });
   };
 
-  const promptName = (title: string, initialValue = '') => {
-    const name = window.prompt(title, initialValue);
-    return name ? name.trim() : '';
-  };
-
   const onNewNotebook = () => {
-    const name = promptName('New notebook name');
-    if (!name) return;
-    createNotebook(name);
+    const existing = Array.from(notebooks.values()).map((n) => n.name);
+    const name = nextUniqueName('New Notebook', existing);
+    const action = createNotebook(name) as any;
+    const notebookId = action?.notebookId as T.NotebookId | undefined;
+    if (notebookId) {
+      setExpandedNotebooks((prev) => {
+        const next = new Set(prev);
+        next.add(notebookId);
+        return next;
+      });
+      setEditingNotebookId(notebookId);
+      setEditingFolderId(null);
+      setDraftName(name);
+    }
   };
 
   const onNewFolder = (
     notebookId: T.NotebookId,
     parentFolderId?: T.FolderId
   ) => {
-    const name = promptName('New folder name');
-    if (!name) return;
-    createFolder(notebookId, name, parentFolderId ?? null);
+    const allFolders = foldersByNotebook.get(notebookId) ?? [];
+    const existing = allFolders.map(([, f]) => f.name);
+    const name = nextUniqueName('New Folder', existing);
+    const action = createFolder(
+      notebookId,
+      name,
+      parentFolderId ?? null
+    ) as any;
+    const folderId = action?.folderId as T.FolderId | undefined;
+    // ensure the notebook is expanded so the new folder is visible immediately
+    setExpandedNotebooks((prev) => {
+      const next = new Set(prev);
+      next.add(notebookId);
+      return next;
+    });
+    if (folderId) {
+      openFolder(folderId);
+      setEditingFolderId(folderId);
+      setEditingNotebookId(null);
+      setDraftName(name);
+    }
   };
 
   const onDeleteNotebook = (notebookId: T.NotebookId, name: string) => {
-    const ok = window.confirm(`Delete notebook "${name}"?`);
+    const ok = confirmDelete(
+      'Delete notebook',
+      `Delete notebook "${name}"? This will delete all folders inside it.`
+    );
     if (!ok) return;
     deleteNotebook(notebookId);
   };
 
   const onDeleteFolder = (folderId: T.FolderId, name: string) => {
-    const ok = window.confirm(`Delete folder "${name}" and all subfolders?`);
+    const ok = confirmDelete(
+      'Delete folder',
+      `Delete folder "${name}" and all subfolders?`
+    );
     if (!ok) return;
     deleteFolder(folderId);
+  };
+
+  const commitNotebookRename = (
+    notebookId: T.NotebookId,
+    currentName: string
+  ) => {
+    const next = draftName.trim();
+    if (next && next !== currentName) {
+      renameNotebook(notebookId, next);
+    }
+    setEditingNotebookId(null);
+    setDraftName('');
+  };
+
+  const commitFolderRename = (folderId: T.FolderId, currentName: string) => {
+    const next = draftName.trim();
+    if (next && next !== currentName) {
+      renameFolder(folderId, next);
+    }
+    setEditingFolderId(null);
+    setDraftName('');
   };
 
   const renderFolderNode = (
@@ -155,15 +230,38 @@ export const NotebookSidebar = ({
             className="navigation-bar__folder-item"
             onClick={() => openFolder(folderId)}
             onDoubleClick={() => {
-              const nextName = promptName('Rename folder', folder.name);
-              if (!nextName || nextName === folder.name) return;
-              renameFolder(folderId, nextName);
+              setEditingFolderId(folderId);
+              setEditingNotebookId(null);
+              setDraftName(folder.name);
             }}
           >
             <span className="navigation-bar__folder-icon">
               <FolderIcon />
             </span>
-            <span className="navigation-bar__folder-label">{folder.name}</span>
+            {editingFolderId === folderId ? (
+              <input
+                className="navigation-bar__rename-input"
+                autoFocus
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitFolderRename(folderId, folder.name);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setEditingFolderId(null);
+                    setDraftName('');
+                  }
+                }}
+                onBlur={() => commitFolderRename(folderId, folder.name)}
+              />
+            ) : (
+              <span className="navigation-bar__folder-label">
+                {folder.name}
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -202,15 +300,36 @@ export const NotebookSidebar = ({
                   className="navigation-bar__notebook-toggle"
                   onClick={() => toggleNotebookExpanded(notebookId)}
                   onDoubleClick={() => {
-                    const nextName = promptName(
-                      'Rename notebook',
-                      notebook.name
-                    );
-                    if (!nextName || nextName === notebook.name) return;
-                    renameNotebook(notebookId, nextName);
+                    setEditingNotebookId(notebookId);
+                    setEditingFolderId(null);
+                    setDraftName(notebook.name);
                   }}
                 >
-                  {isExpanded ? '▾' : '▸'} {notebook.name}
+                  {isExpanded ? '▾' : '▸'}{' '}
+                  {editingNotebookId === notebookId ? (
+                    <input
+                      className="navigation-bar__rename-input"
+                      autoFocus
+                      value={draftName}
+                      onChange={(e) => setDraftName(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitNotebookRename(notebookId, notebook.name);
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setEditingNotebookId(null);
+                          setDraftName('');
+                        }
+                      }}
+                      onBlur={() =>
+                        commitNotebookRename(notebookId, notebook.name)
+                      }
+                    />
+                  ) : (
+                    notebook.name
+                  )}
                 </button>
                 <button
                   type="button"

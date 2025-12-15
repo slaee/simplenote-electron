@@ -57,6 +57,41 @@ const safeRmDir = (root, dirRel) => {
   }
 };
 
+const ensureUniqueDirPath = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    return dirPath;
+  }
+  const parent = path.dirname(dirPath);
+  const base = path.basename(dirPath);
+  for (let i = 2; i < 500; i++) {
+    const candidate = path.join(parent, `${base} (${i})`);
+    if (!fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return dirPath;
+};
+
+const cleanupEmptyDirs = (startDir, stopDir) => {
+  try {
+    let cur = startDir;
+    while (cur && cur.startsWith(stopDir) && cur !== stopDir) {
+      if (!fs.existsSync(cur)) {
+        cur = path.dirname(cur);
+        continue;
+      }
+      const entries = fs.readdirSync(cur);
+      if (entries.length > 0) {
+        break;
+      }
+      fs.rmdirSync(cur);
+      cur = path.dirname(cur);
+    }
+  } catch {
+    // best-effort cleanup
+  }
+};
+
 const safeName = (name, fallback) => {
   const cleaned = sanitizeFilename(String(name || '').trim()) || fallback;
   return cleaned.length > 0 ? cleaned : fallback;
@@ -161,6 +196,22 @@ const electronAPI = {
         return 'logout';
     }
   },
+  confirm: ({ title, message, detail } = {}) => {
+    try {
+      const response = remote.dialog.showMessageBoxSync({
+        type: 'warning',
+        buttons: ['Cancel', 'Delete'],
+        defaultId: 0,
+        cancelId: 0,
+        title: title || 'Confirm',
+        message: message || 'Are you sure?',
+        detail: detail || undefined,
+      });
+      return response === 1;
+    } catch (e) {
+      return false;
+    }
+  },
   // Filesystem-backed persistence helpers used by the renderer-side
   // `lib/state/persistence.ts` module when running under Electron.
   loadPersistentState: () => {
@@ -240,19 +291,36 @@ const electronAPI = {
           return;
         }
         activeNoteIds.add(noteId);
-        const { mdFile, noteDir } = getOrCreateNoteDir(
-          root,
-          foldersArray,
-          notebooksArray,
-          noteId,
-          note
-        );
-        ensureDir(path.dirname(mdFile));
-        fs.writeFileSync(mdFile, String(note.content || ''), 'utf8');
+        const prevDirRel = prevNotePaths?.[noteId]?.dirRel;
+        const prevDir = prevDirRel ? path.join(root, prevDirRel) : null;
+
+        const { mdFile: desiredMdFile, noteDir: desiredNoteDir } =
+          getOrCreateNoteDir(root, foldersArray, notebooksArray, noteId, note);
+        let finalNoteDir = desiredNoteDir;
+        let finalMdFile = desiredMdFile;
+
+        if (
+          prevDir &&
+          fs.existsSync(prevDir) &&
+          path.resolve(prevDir) !== path.resolve(desiredNoteDir)
+        ) {
+          ensureDir(path.dirname(desiredNoteDir));
+          const uniqueTarget = ensureUniqueDirPath(desiredNoteDir);
+          fs.renameSync(prevDir, uniqueTarget);
+          cleanupEmptyDirs(path.dirname(prevDir), root);
+          finalNoteDir = uniqueTarget;
+          const newDirName = path.basename(uniqueTarget);
+          finalMdFile = path.join(uniqueTarget, `${newDirName}.md`);
+        }
+
+        ensureDir(finalNoteDir);
+        ensureDir(path.join(finalNoteDir, 'assets'));
+        ensureDir(path.dirname(finalMdFile));
+        fs.writeFileSync(finalMdFile, String(note.content || ''), 'utf8');
 
         nextNotePaths[noteId] = {
-          dirRel: path.relative(root, noteDir),
-          mdRel: path.relative(root, mdFile),
+          dirRel: path.relative(root, finalNoteDir),
+          mdRel: path.relative(root, finalMdFile),
         };
       });
 
@@ -269,6 +337,9 @@ const electronAPI = {
         notes: metaNotes,
         notePaths: nextNotePaths,
       });
+
+      // Cleanup empty directories that may remain after moves/deletes.
+      cleanupEmptyDirs(path.join(root, META_DIR_NAME), root);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to save persistent state to filesystem:', e);

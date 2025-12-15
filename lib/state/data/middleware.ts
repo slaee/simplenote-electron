@@ -16,6 +16,52 @@ export const middleware: S.Middleware =
     const state = store.getState();
 
     switch (action.type) {
+      case 'DELETE_FOLDER': {
+        const typed: any = action as any;
+        if (typed.meta?.skipCascade) {
+          return next(action);
+        }
+
+        const folderId = (action as any).folderId as T.FolderId;
+        const toDelete: T.FolderId[] = [];
+        const queue: T.FolderId[] = [folderId];
+        const folders = state.data.folders;
+
+        while (queue.length) {
+          const cur = queue.pop()!;
+          toDelete.push(cur);
+          folders.forEach((folder, id) => {
+            if (folder.parentFolderId === cur) {
+              queue.push(id);
+            }
+          });
+        }
+
+        // Dispatch child folder deletes first so notes get reassigned correctly for every folder.
+        toDelete
+          .filter((id) => id !== folderId)
+          .forEach((id) =>
+            store.dispatch({
+              type: 'DELETE_FOLDER',
+              folderId: id,
+              meta: { skipCascade: true },
+            } as any)
+          );
+
+        return next({ ...(action as any), meta: { skipCascade: true } } as any);
+      }
+
+      case 'DELETE_NOTEBOOK': {
+        const notebookId = (action as any).notebookId as T.NotebookId;
+        const folders = state.data.folders;
+        folders.forEach((folder, folderId) => {
+          if (folder.notebookId === notebookId) {
+            store.dispatch({ type: 'DELETE_FOLDER', folderId } as any);
+          }
+        });
+        return next(action);
+      }
+
       case 'CREATE_NOTE': {
         const noteId = uuid() as T.EntityId;
 
