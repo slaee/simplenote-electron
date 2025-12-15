@@ -1,30 +1,20 @@
 'use strict';
 
 /**
- * Internal dependencies
+ * Auto-update is disabled in this build.
+ *
+ * We export a minimal stub object so callers can still safely invoke
+ * `ping` and `pingAndShowProgress`, but no network requests or
+ * update flows will be triggered.
  */
-const platform = require('../detect/platform');
-const config = require('../config');
-const AutoUpdater = require('./auto-updater');
-const ManualUpdater = require('./manual-updater');
 
-let updater = false;
-
-if (platform.isOSX() || platform.isWindows() || process.env.APPIMAGE) {
-  updater = new AutoUpdater({
-    changelogUrl: config.updater.changelogUrl,
-  });
-} else {
-  updater = new ManualUpdater({
-    downloadUrl: config.updater.downloadUrl,
-    apiUrl: config.updater.apiUrl,
-    changelogUrl: config.updater.changelogUrl,
-    options: {
-      dialogMessage:
-        '{name} {newVersion} is now available — you have {currentVersion}. Would you like to download it now?',
-      confirmLabel: 'Download',
-    },
-  });
-}
+const updater = {
+  ping() {
+    // no-op: automatic background update checks disabled
+  },
+  pingAndShowProgress() {
+    // no-op: user-initiated update checks disabled
+  },
+};
 
 module.exports = updater;

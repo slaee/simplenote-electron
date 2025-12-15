@@ -3,115 +3,17 @@ import './utils/ensure-platform-support';
 // TODO: there should be some way to add this to webpack config instead of here
 import 'setimmediate';
 
-import { parse } from 'cookie';
+import React from 'react';
+import { render } from 'react-dom';
+import { Provider } from 'react-redux';
+import Modal from 'react-modal';
 
-import { boot as bootWithoutAuth } from './boot-without-auth';
-import { boot as bootLoggingOut } from './logging-out';
-import { isElectron } from './utils/platform';
+import App from './app';
+import { ErrorBoundaryWithAnalytics } from './error-boundary';
+import { makeStore } from './state';
+import isDevConfig from './utils/is-dev-config';
 
-const clearStorage = (): Promise<void> =>
-  new Promise((resolveStorage) => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('lastSyncedTime');
-    localStorage.removeItem('localQueue:note');
-    localStorage.removeItem('localQueue:preferences');
-    localStorage.removeItem('localQueue:tag');
-    localStorage.removeItem('simpleNote');
-    localStorage.removeItem('stored_user');
-    sessionStorage.clear();
-    window.electron?.send('appStateUpdate', {});
-
-    Promise.all([
-      new Promise((resolve) => {
-        const r = indexedDB.deleteDatabase('ghost');
-        r.onupgradeneeded = resolve;
-        r.onblocked = resolve;
-        r.onsuccess = resolve;
-        r.onerror = resolve;
-      }),
-      new Promise((resolve) => {
-        const r = indexedDB.deleteDatabase('simplenote');
-        r.onupgradeneeded = resolve;
-        r.onblocked = resolve;
-        r.onsuccess = resolve;
-        r.onerror = resolve;
-      }),
-      new Promise((resolve) => {
-        const r = indexedDB.deleteDatabase('simplenote_v2');
-        r.onupgradeneeded = resolve;
-        r.onblocked = resolve;
-        r.onsuccess = resolve;
-        r.onerror = resolve;
-      }),
-    ])
-      .then(() => {
-        window.electron?.send('clearCookies');
-        resolveStorage();
-      })
-      .catch(() => resolveStorage());
-  });
-
-const forceReload = () => {
-  if (isElectron) {
-    window.electron?.send('reload');
-  } else {
-    window.history.go();
-  }
-};
-
-const loadAccount = () => {
-  const storedUserData = localStorage.getItem('stored_user');
-  if (!storedUserData) {
-    return [null, null];
-  }
-
-  try {
-    const storedUser = JSON.parse(storedUserData);
-    return [storedUser.accessToken, storedUser.username];
-  } catch (e) {
-    return [null, null];
-  }
-};
-
-const saveAccount = (accessToken: string, username: string): void => {
-  localStorage.setItem(
-    'stored_user',
-    JSON.stringify({ accessToken, username })
-  );
-};
-
-const getStoredAccount = () => {
-  const [storedToken, storedUsername] = loadAccount();
-
-  // App Engine gets preference if it sends authentication details
-  const cookie = parse(document.cookie);
-  if (config.is_app_engine && cookie?.token && cookie?.email) {
-    if (cookie.email !== storedUsername) {
-      clearStorage();
-      saveAccount(cookie.token, cookie.email);
-    }
-    return [cookie.token, cookie.email];
-  }
-
-  if (storedToken) {
-    return [storedToken, storedUsername];
-  }
-
-  const accessToken = localStorage.getItem('access_token');
-  if (accessToken) {
-    return [accessToken, null];
-  }
-
-  return [null, null];
-};
-
-const [storedToken, storedUsername] = getStoredAccount();
-
-if (config.is_app_engine && !storedToken) {
-  window.webConfig?.signout?.(() => {
-    window.location = `${config.app_engine_url}/`;
-  });
-}
+import '../scss/style.scss';
 
 const ensureNormalization = () =>
   !('normalize' in String.prototype)
@@ -169,38 +71,56 @@ if (!Array.prototype.findIndex) {
 }
 /* eslint-enable */
 
-const run = (token: string | null, username: string | null) => {
-  if (token) {
-    Promise.all([
-      ensureNormalization(),
-      import(/* webpackChunkName: 'boot-with-auth' */ './boot-with-auth'),
-    ]).then(([unormPolyfillLoaded, { bootWithToken }]) => {
-      bootWithToken(
-        () => {
-          bootLoggingOut();
-          clearStorage().then(() => {
-            if (window.webConfig?.signout) {
-              window.webConfig.signout(forceReload);
-            } else {
-              forceReload();
-            }
-          });
+// Loosen types for React.createElement so we don't fight complex generics
+// coming from react-redux and our own components.
+const ReduxProvider: React.ComponentType<any> =
+  Provider as unknown as React.ComponentType<any>;
+const ErrorBoundaryComponent: React.ComponentType<any> =
+  ErrorBoundaryWithAnalytics as unknown as React.ComponentType<any>;
+const AppComponent: React.ComponentType<any> =
+  App as unknown as React.ComponentType<any>;
+
+const bootOffline = () => {
+  Modal.setAppElement('#root');
+
+  ensureNormalization().then(() => {
+    makeStore(null).then((store) => {
+      Object.defineProperties(window, {
+        dispatch: {
+          get() {
+            return store.dispatch;
+          },
         },
-        token,
-        username
-      );
-    });
-  } else {
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'stored_user') {
-        forceReload();
+        state: {
+          get() {
+            return store.getState();
+          },
+        },
+      });
+
+      window.electron?.send('appStateUpdate', {
+        settings: store.getState().settings,
+        editMode: store.getState().ui.editMode,
+      });
+
+      const rootElement = document.getElementById('root');
+
+      if (rootElement) {
+        render(
+          React.createElement(ReduxProvider, { store }, [
+            React.createElement(
+              ErrorBoundaryComponent,
+              { isDevConfig: isDevConfig(config?.development) },
+              React.createElement(AppComponent, {
+                isDevConfig: isDevConfig(config?.development),
+              })
+            ),
+          ]),
+          rootElement
+        );
       }
     });
-    bootWithoutAuth((token: string, username: string) => {
-      saveAccount(token, username);
-      run(token, username);
-    });
-  }
+  });
 };
 
-run(storedToken, storedUsername);
+bootOffline();
