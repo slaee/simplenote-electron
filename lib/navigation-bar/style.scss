@@ -4,15 +4,9 @@
   background-color: var(--background-color);
   display: flex;
   flex-direction: column;
-  position: absolute;
-  top: 0;
-  left: 0;
   padding-top: $toolbar-height;
-  width: $navigation-bar-width;
   height: 100%;
-  border-right: 1px solid var(--secondary-color);
-  z-index: 2;
-  transition: transform 200ms ease-in-out;
+  width: 100%;
 }
 
 .navigation-bar__folders {
@@ -30,6 +24,137 @@
   overflow: hidden;
   min-height: 9em;
   padding: 12px 0 0;
+}
+
+.navigation-bar__section-title {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--foreground-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.navigation-bar__notebooks {
+  overflow: auto;
+  padding-bottom: 10px;
+}
+
+.navigation-bar__notebook {
+  padding: 4px 0;
+}
+
+.navigation-bar__notebook-header {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 10px;
+}
+
+.navigation-bar__notebook-toggle {
+  flex: 1 1 auto;
+  text-align: left;
+  padding: 8px 6px;
+  color: var(--primary-color);
+  border-radius: 6px;
+
+  &:hover {
+    background: var(--secondary-highlight-color);
+  }
+}
+
+.navigation-bar__notebook-add,
+.navigation-bar__notebook-delete {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--foreground-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--secondary-highlight-color);
+    color: var(--primary-color);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.navigation-bar__folder-list {
+  padding: 2px 0 6px;
+}
+
+.navigation-bar__folder-row {
+  display: flex;
+  align-items: center;
+}
+
+.navigation-bar__folder-item {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--primary-color);
+  text-align: left;
+  width: 100%;
+
+  &:hover {
+    background: var(--secondary-highlight-color);
+  }
+}
+
+.navigation-bar__folder-row.is-selected .navigation-bar__folder-item {
+  background: var(--highlight-color);
+}
+
+.navigation-bar__folder-icon {
+  color: var(--foreground-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.navigation-bar__folder-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navigation-bar__folder-delete {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: 10px;
+  border-radius: 8px;
+  color: var(--foreground-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.navigation-bar__folder-row:hover .navigation-bar__folder-delete {
+  opacity: 1;
+}
+
+.navigation-bar__folder-delete:hover {
+  background: var(--secondary-highlight-color);
+  color: var(--primary-color);
 }
 
 .navigation-bar__untagged {

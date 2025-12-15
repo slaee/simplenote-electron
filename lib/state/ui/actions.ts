@@ -68,6 +68,13 @@ export const openTag: A.ActionCreator<A.OpenTag> = (tagName: T.TagName) => ({
   tagName,
 });
 
+export const openFolder: A.ActionCreator<A.OpenFolder> = (
+  folderId: T.FolderId
+) => ({
+  type: 'OPEN_FOLDER',
+  folderId,
+});
+
 export const reallyLogOut: A.ActionCreator<A.ReallyLogOut> = () => ({
   type: 'REALLY_LOG_OUT',
 });

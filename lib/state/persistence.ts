@@ -6,6 +6,55 @@ import { isElectron } from '../utils/platform';
 const DB_VERSION = 2020065;
 let keepSyncing = true;
 
+const DEFAULT_NOTEBOOK_ID = 'default-notebook' as unknown as T.NotebookId;
+const DEFAULT_FOLDER_ID = 'default-folder' as unknown as T.FolderId;
+
+const migrateNotebooksAndFolders = (
+  data: T.RecursivePartial<S.State>
+): T.RecursivePartial<S.State> => {
+  const notebooks = (data.data as any)?.notebooks as Map<
+    T.NotebookId,
+    T.Notebook
+  > | null;
+  const folders = (data.data as any)?.folders as Map<
+    T.FolderId,
+    T.Folder
+  > | null;
+  const notes = (data.data as any)?.notes as Map<T.EntityId, T.Note> | null;
+
+  if (!notebooks || !folders || !notes) {
+    return data;
+  }
+
+  if (notebooks.size === 0) {
+    notebooks.set(DEFAULT_NOTEBOOK_ID, { name: 'Notebooks' });
+  }
+
+  if (folders.size === 0) {
+    folders.set(DEFAULT_FOLDER_ID, {
+      name: 'Inbox',
+      notebookId: DEFAULT_NOTEBOOK_ID,
+      parentFolderId: null,
+    });
+  }
+
+  // Assign any existing notes without a folder to the default folder.
+  notes.forEach((note, noteId) => {
+    if (typeof note.folderId === 'undefined' || note.folderId === null) {
+      notes.set(noteId, { ...note, folderId: DEFAULT_FOLDER_ID });
+    }
+    // Markdown-first: ensure all notes have the markdown system tag.
+    if (!note.systemTags?.includes('markdown')) {
+      notes.set(noteId, {
+        ...notes.get(noteId),
+        systemTags: [...(note.systemTags ?? []), 'markdown'],
+      });
+    }
+  });
+
+  return data;
+};
+
 export const stopSyncing = (): void => {
   keepSyncing = false;
 };
@@ -92,6 +141,8 @@ const loadStateFromIndexedDB = (
                   analyticsAllowed: state.allowAnalytics ?? null,
                   notes: new Map(state.notes),
                   noteTags,
+                  notebooks: new Map(state.notebooks ?? []),
+                  folders: new Map(state.folders ?? []),
                   tags: new Map(state.tags),
                   ...(hasPreferences
                     ? { preferences: new Map(state.preferences) }
@@ -121,11 +172,12 @@ const loadStateFromIndexedDB = (
                   noteRevisions.set(key, new Map(cursor.value));
                   cursor.continue();
                 } else {
+                  const migrated = migrateNotebooksAndFolders(data);
                   resolve([
                     {
-                      ...data,
+                      ...migrated,
                       data: {
-                        ...data.data,
+                        ...(migrated.data as any),
                         noteRevisions,
                       },
                     },
@@ -182,6 +234,8 @@ const saveStateToIndexedDB = (state: S.State) => {
     Array.from(noteIds),
   ]);
   const preferences = Array.from(state.data.preferences);
+  const notebooks = Array.from(state.data.notebooks);
+  const folders = Array.from(state.data.folders);
   const tags = Array.from(state.data.tags);
   const cvs = Array.from(state.simperium.ghosts[0]);
   const ghosts = Array.from(state.simperium.ghosts[1]);
@@ -194,6 +248,8 @@ const saveStateToIndexedDB = (state: S.State) => {
     notes,
     noteTags,
     preferences,
+    notebooks,
+    folders,
     tags,
     cvs,
     ghosts,
@@ -248,6 +304,8 @@ const loadStateFromSQLite = async (
         analyticsAllowed: rawState.allowAnalytics ?? null,
         notes: new Map(rawState.notes),
         noteTags,
+        notebooks: new Map(rawState.notebooks ?? []),
+        folders: new Map(rawState.folders ?? []),
         tags: new Map(rawState.tags),
         ...(hasPreferences
           ? { preferences: new Map(rawState.preferences) }
@@ -271,11 +329,13 @@ const loadStateFromSQLite = async (
       }
     );
 
+    const migrated = migrateNotebooksAndFolders(data);
+
     return [
       {
-        ...data,
+        ...migrated,
         data: {
-          ...data.data,
+          ...(migrated.data as any),
           noteRevisions,
         },
       },
@@ -298,6 +358,8 @@ const saveStateToSQLite = (state: S.State) => {
     Array.from(noteIds),
   ]);
   const preferences = Array.from(state.data.preferences);
+  const notebooks = Array.from(state.data.notebooks);
+  const folders = Array.from(state.data.folders);
   const tags = Array.from(state.data.tags);
   const cvs = Array.from(state.simperium.ghosts[0]);
   const ghosts = Array.from(state.simperium.ghosts[1]);
@@ -310,6 +372,8 @@ const saveStateToSQLite = (state: S.State) => {
     notes,
     noteTags,
     preferences,
+    notebooks,
+    folders,
     tags,
     cvs,
     ghosts,

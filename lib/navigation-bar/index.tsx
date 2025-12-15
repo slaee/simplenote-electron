@@ -1,11 +1,9 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import FocusTrap from 'focus-trap-react';
 
-import ConnectionStatus from '../connection-status';
 import isEmailTag from '../utils/is-email-tag';
 import NavigationBarItem from './item';
-import TagList from '../tag-list';
+import NotebookSidebar from '../notebook-sidebar';
 import NotesIcon from '../icons/notes';
 import TrashIcon from '../icons/trash';
 import SettingsIcon from '../icons/settings';
@@ -88,81 +86,65 @@ export class NavigationBar extends Component<Props> {
     ).length;
 
     return (
-      <FocusTrap
-        paused={isDialogOpen}
-        focusTrapOptions={{
-          clickOutsideDeactivates: true,
-          onDeactivate: this.handleFocusTrapDeactivate,
-        }}
-      >
-        <div className="navigation-bar">
-          <div className="navigation-bar__folders">
-            <NavigationBarItem
-              icon={<NotesIcon />}
-              isSelected={this.isSelected({ selectedRow: 'all' })}
-              label="All Notes"
-              onClick={onShowAllNotes}
-            />
-            <NavigationBarItem
-              icon={<TrashIcon />}
-              isSelected={this.isSelected({ selectedRow: 'trash' })}
-              label="Trash"
-              onClick={this.onSelectTrash}
-            />
-            <NavigationBarItem
-              icon={<SettingsIcon />}
-              label="Settings"
-              onClick={onSettings}
-            />
-          </div>
-          <div className="navigation-bar__tags">
-            {(tagCount && (
-              <>
-                <TagList />
-                <div className="navigation-bar__folders navigation-bar__untagged">
-                  <NavigationBarItem
-                    icon={<UntaggedNotesIcon />}
-                    isSelected={this.isSelected({ selectedRow: 'untagged' })}
-                    label="Untagged Notes"
-                    onClick={onShowUntaggedNotes}
-                  />
-                </div>
-              </>
-            )) ||
-              null}
-          </div>
-          <div className="navigation-bar__tools">
-            <div className="navigation-bar__server-connection">
-              <ConnectionStatus />
-            </div>
-          </div>
-          <div className="navigation-bar__footer">
-            <button
-              type="button"
-              className="navigation-bar__footer-item"
-              onClick={this.props.showKeyboardShortcuts}
-            >
-              Keyboard Shortcuts
-            </button>
-          </div>
-          <div className="navigation-bar__footer">
-            <button
-              type="button"
-              className="navigation-bar__footer-item"
-              onClick={this.onHelpClicked}
-            >
-              Help &amp; Support
-            </button>
-            <button
-              type="button"
-              className="navigation-bar__footer-item"
-              onClick={onAbout}
-            >
-              About
-            </button>
-          </div>
+      <div className="navigation-bar" aria-hidden={isDialogOpen}>
+        <div className="navigation-bar__folders">
+          <NavigationBarItem
+            icon={<NotesIcon />}
+            isSelected={this.isSelected({ selectedRow: 'all' })}
+            label="All Notes"
+            onClick={onShowAllNotes}
+          />
+          <NavigationBarItem
+            icon={<TrashIcon />}
+            isSelected={this.isSelected({ selectedRow: 'trash' })}
+            label="Trash"
+            onClick={this.onSelectTrash}
+          />
+          <NavigationBarItem
+            icon={<SettingsIcon />}
+            label="Settings"
+            onClick={onSettings}
+          />
         </div>
-      </FocusTrap>
+        <div className="navigation-bar__tags">
+          <NotebookSidebar />
+          {tagCount ? (
+            <div className="navigation-bar__folders navigation-bar__untagged">
+              <NavigationBarItem
+                icon={<UntaggedNotesIcon />}
+                isSelected={this.isSelected({ selectedRow: 'untagged' })}
+                label="Untagged Notes"
+                onClick={onShowUntaggedNotes}
+              />
+            </div>
+          ) : null}
+        </div>
+        <div className="navigation-bar__footer">
+          <button
+            type="button"
+            className="navigation-bar__footer-item"
+            onClick={this.props.showKeyboardShortcuts}
+          >
+            Keyboard Shortcuts
+          </button>
+        </div>
+        <div className="navigation-bar__footer">
+          <button
+            type="button"
+            className="navigation-bar__footer-item"
+            onClick={this.onHelpClicked}
+          >
+            Help &amp; Support
+          </button>
+          <button
+            type="button"
+            className="navigation-bar__footer-item"
+            onClick={onAbout}
+          >
+            About
+          </button>
+        </div>
+      </div>
     );
   }
 }

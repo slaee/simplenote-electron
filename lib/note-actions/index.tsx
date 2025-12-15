@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
 import { includes, isEmpty } from 'lodash';
+import { saveAs } from 'file-saver';
 
 import ClipboardButton from '../components/clipboard-button';
 import CheckboxControl from '../controls/checkbox';
@@ -65,6 +66,25 @@ export class NoteActions extends Component<Props> {
     return isEmpty(url) ? null : `http://simp.ly/p/${url}`;
   };
 
+  downloadMarkdown = () => {
+    const { note, noteId } = this.props;
+    const { title } = getNoteTitleAndPreview(note);
+    const safeTitle =
+      title.trim().length > 0 ? title.trim() : `note-${String(noteId)}`;
+    const fileName =
+      safeTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, '_')
+        .replace(/^_+|_+$/g, '') || `note-${String(noteId)}.md`;
+
+    const finalName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
+
+    const blob = new Blob([note.content ?? ''], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    saveAs(blob, finalName);
+  };
+
   render() {
     const { hasRevisions, isMarkdown, isPinned, noteId, note } = this.props;
     const isPublished = includes(note.systemTags, 'published');
@@ -124,6 +144,22 @@ export class NoteActions extends Component<Props> {
                 text={noteLink}
                 linkText="Copy Internal Link"
               />
+            </div>
+            <div className="note-actions-item">
+              <ClipboardButton
+                container={this.containerRef}
+                text={note.content}
+                linkText="Copy Markdown"
+              />
+            </div>
+            <div className="note-actions-item">
+              <button
+                className="button button-borderless"
+                type="button"
+                onClick={this.downloadMarkdown}
+              >
+                Download as Markdown…
+              </button>
             </div>
 
             {hasRevisions && (

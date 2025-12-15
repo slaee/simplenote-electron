@@ -80,6 +80,7 @@ export type OpenRevision = Action<
   { noteId: T.EntityId; version: number }
 >;
 export type OpenTag = Action<'OPEN_TAG', { tagName: T.TagName }>;
+export type OpenFolder = Action<'OPEN_FOLDER', { folderId: T.FolderId }>;
 export type ReallyCloseWindow = Action<'REALLY_CLOSE_WINDOW'>;
 export type ReallyLogOut = Action<'REALLY_LOG_OUT'>;
 export type RecordEvent = Action<
@@ -234,6 +235,29 @@ export type TrashTag = Action<
   { tagName: T.TagName; remainingTags?: number }
 >;
 
+export type CreateNotebook = Action<
+  'CREATE_NOTEBOOK',
+  { notebookId: T.NotebookId; notebook: T.Notebook }
+>;
+export type RenameNotebook = Action<
+  'RENAME_NOTEBOOK',
+  { notebookId: T.NotebookId; name: string }
+>;
+export type DeleteNotebook = Action<
+  'DELETE_NOTEBOOK',
+  { notebookId: T.NotebookId }
+>;
+
+export type CreateFolder = Action<
+  'CREATE_FOLDER',
+  { folderId: T.FolderId; folder: T.Folder }
+>;
+export type RenameFolder = Action<
+  'RENAME_FOLDER',
+  { folderId: T.FolderId; name: string }
+>;
+export type DeleteFolder = Action<'DELETE_FOLDER', { folderId: T.FolderId }>;
+
 /*
  * Simperium operations
  */
@@ -373,6 +397,7 @@ export type ActionType =
   | OpenNote
   | OpenRevision
   | OpenTag
+  | OpenFolder
   | PinNote
   | PreferencesBucketRemove
   | PreferencesBucketUpdate
@@ -444,6 +469,12 @@ export type ActionType =
   | TrashNote
   | TrashTag
   | TrashOpenNote
+  | CreateNotebook
+  | RenameNotebook
+  | DeleteNotebook
+  | CreateFolder
+  | RenameFolder
+  | DeleteFolder
   | UpdateAccountVerification
   | WindowResize;
 

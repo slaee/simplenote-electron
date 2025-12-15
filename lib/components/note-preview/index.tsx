@@ -186,8 +186,8 @@ const mapStateToProps: S.MapState<StateProps, OwnProps> = (state, props) => {
     noteId,
     notes: state.data.notes,
     searchQuery: state.ui.searchQuery,
-    showRenderedView:
-      !!note?.systemTags.includes('markdown') && !state.ui.editMode,
+    // Always render Markdown preview when the markdown tag is set, regardless of edit mode.
+    showRenderedView: !!note?.systemTags.includes('markdown'),
   };
 };
 

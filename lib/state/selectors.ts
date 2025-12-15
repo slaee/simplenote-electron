@@ -52,6 +52,10 @@ export const openedTag: S.Selector<T.TagName | null> = ({
   ui: { collection },
 }) => (collection.type === 'tag' && collection.tagName) || null;
 
+export const openedFolder: S.Selector<T.FolderId | null> = ({
+  ui: { collection },
+}) => (collection.type === 'folder' && collection.folderId) || null;
+
 export const showTrash: S.Selector<boolean> = ({ ui: { collection } }) =>
   collection.type === 'trash';
 export const isDialogOpen = (state: S.State, name: T.DialogType['type']) =>

@@ -7,7 +7,7 @@ import { withTag } from '../../utils/tag-hash';
 import type * as A from '../action-types';
 import type * as S from '../';
 import type * as T from '../../types';
-import { numberOfNonEmailTags, openedTag } from '../selectors';
+import { numberOfNonEmailTags, openedFolder, openedTag } from '../selectors';
 
 export const middleware: S.Middleware =
   (store) =>
@@ -19,29 +19,25 @@ export const middleware: S.Middleware =
       case 'CREATE_NOTE': {
         const noteId = uuid() as T.EntityId;
 
-        // preserve last markdown setting
-        const topNoteId = state.ui.filteredNotes[0];
-        const topNote = topNoteId && state.data.notes.get(topNoteId);
-        const useMarkdown = topNote?.systemTags.includes('markdown');
-        const markdownInNote =
-          action.note?.systemTags?.indexOf('markdown') ?? -1;
-        const systemTags = action.note?.systemTags?.slice() ?? [];
-
-        if (useMarkdown && -1 === markdownInNote) {
-          systemTags.push('markdown');
-        } else if (!useMarkdown && markdownInNote >= 0) {
-          systemTags.splice(markdownInNote, 1);
-        }
+        // Always enable Markdown for new notes (file-based, Markdown-first workflow)
+        const systemTags = Array.from(
+          new Set([...(action.note?.systemTags?.slice() ?? []), 'markdown'])
+        );
 
         // apply selected tag by default
         const selectedTag = openedTag(state);
         const givenTags = action.note?.tags ?? [];
         const tags = selectedTag ? withTag(givenTags, selectedTag) : givenTags;
 
+        // apply selected folder by default (offline notebooks)
+        const selectedFolderId = openedFolder(state);
+        const folderId =
+          typeof selectedFolderId !== 'undefined' ? selectedFolderId : null;
+
         return next({
           type: 'CREATE_NOTE_WITH_ID',
           noteId,
-          note: { ...action.note, systemTags, tags },
+          note: { ...action.note, systemTags, tags, folderId },
           meta: {
             nextNoteToOpen: noteId,
           },

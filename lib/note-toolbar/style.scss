@@ -35,6 +35,36 @@
   align-items: center;
 }
 
+.note-toolbar__md-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  padding: 4px 6px;
+  border: 1px solid var(--secondary-color);
+  border-radius: 8px;
+  background: var(--background-color);
+}
+
+.note-toolbar__md-button {
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 7px;
+  border-radius: 6px;
+  color: var(--primary-color);
+  border: 1px solid transparent;
+  min-width: 30px;
+  text-align: center;
+
+  &:hover {
+    background: var(--secondary-highlight-color);
+  }
+
+  &:active {
+    background: var(--highlight-color);
+  }
+}
+
 .note-toolbar-trashed {
   display: flex;
   align-items: center;

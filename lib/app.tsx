@@ -2,7 +2,6 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import NoteInfo from './note-info';
 import NoteActions from './note-actions';
-import NavigationBar from './navigation-bar';
 import AppLayout from './app-layout';
 import DevBadge from './components/dev-badge';
 import DialogRenderer from './dialog-renderer';
@@ -201,7 +200,6 @@ class AppComponent extends Component<Props> {
     });
 
     const mainClasses = classNames('simplenote-app', {
-      'navigation-open': showNavigation,
       'is-electron': isElectron,
     });
 
@@ -215,7 +213,6 @@ class AppComponent extends Component<Props> {
           />
         )}
         <div className={mainClasses}>
-          {showNavigation && <NavigationBar />}
           <AppLayout />
           {showNoteInfo && <NoteInfo />}
           {showNoteActions && <NoteActions />}

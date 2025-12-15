@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import { connect } from 'react-redux';
 
 import MenuBar from '../menu-bar';
+import NavigationBar from '../navigation-bar';
 import NoteToolbar from '../note-toolbar';
 import RevisionSelector from '../revision-selector';
 import SearchField from '../search-field';
@@ -21,11 +22,6 @@ const NoteList = React.lazy(
 
 const NoteEditor = React.lazy(
   () => import(/* webpackChunkName: 'note-editor' */ '../note-editor')
-);
-
-const NotePreview = React.lazy(
-  () =>
-    import(/* webpackChunkName: 'note-preview' */ '../components/note-preview')
 );
 
 type StateProps = {
@@ -117,11 +113,16 @@ export class AppLayout extends Component<Props> {
     const hiddenByRevisions = showRevisions ? true : undefined;
 
     return (
-      <div
-        className={mainClasses}
-        aria-hidden={isNavigationOpen ? true : undefined}
-      >
+      <div className={mainClasses}>
         <Suspense fallback={placeholder}>
+          <nav
+            aria-hidden={hiddenByRevisions}
+            aria-label="Folders"
+            className="app-layout__nav-column"
+            data-collapsed={isNavigationOpen ? 'false' : 'true'}
+          >
+            <NavigationBar />
+          </nav>
           <aside
             aria-hidden={hiddenByRevisions}
             aria-label="Notes list"

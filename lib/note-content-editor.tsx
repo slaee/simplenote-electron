@@ -102,6 +102,7 @@ type OwnProps = {
 
 type StateProps = {
   editorSelection: [number, number, 'RTL' | 'LTR'];
+  folders: Map<T.FolderId, T.Folder>;
   isFocusMode: boolean;
   keyboardShortcuts: boolean;
   lineLength: T.LineLength;
@@ -141,10 +142,12 @@ type OwnState = {
 
 class NoteContentEditor extends Component<Props> {
   bootTimer: ReturnType<typeof setTimeout> | null = null;
+  markdownTimer: ReturnType<typeof setTimeout> | null = null;
   editor: Editor.IStandaloneCodeEditor | null = null;
   monaco: Monaco | null = null;
   contentDiv = createRef<HTMLDivElement>();
   decorations: Editor.IEditorDecorationsCollection | undefined;
+  markdownDecorations: Editor.IEditorDecorationsCollection | undefined;
   matchesInNote: Editor.IModelDeltaDecoration[] = [];
   selectedDecoration: Editor.IEditorDecorationsCollection | undefined;
 
@@ -205,6 +208,10 @@ class NoteContentEditor extends Component<Props> {
     this.props.storeHasFocus(this.hasFocus);
     window.addEventListener('resize', clearNotePositions);
     window.addEventListener('toggleChecklist', this.handleChecklist, true);
+    window.addEventListener(
+      'markdownCommand',
+      this.handleMarkdownCommand as any
+    );
     this.toggleShortcuts(true);
   }
 
@@ -214,9 +221,16 @@ class NoteContentEditor extends Component<Props> {
     if (this.bootTimer) {
       clearTimeout(this.bootTimer);
     }
+    if (this.markdownTimer) {
+      clearTimeout(this.markdownTimer);
+    }
     window.electron?.removeListener('editorCommand');
     window.removeEventListener('input', this.handleUndoRedo, true);
     window.removeEventListener('toggleChecklist', this.handleChecklist, true);
+    window.removeEventListener(
+      'markdownCommand',
+      this.handleMarkdownCommand as any
+    );
     window.removeEventListener('resize', clearNotePositions, true);
     this.toggleShortcuts(false);
   }
@@ -352,17 +366,19 @@ class NoteContentEditor extends Component<Props> {
       const start = this.editor.getModel()?.getPositionAt(thisStart);
       const end = this.editor.getModel()?.getPositionAt(thisEnd);
 
-      this.editor.setSelection(
-        Selection.createWithDirection(
-          start?.lineNumber,
-          start?.column,
-          end?.lineNumber,
-          end?.column,
-          thisDirection === 'RTL'
-            ? SelectionDirection.RTL
-            : SelectionDirection.LTR
-        )
-      );
+      if (start && end) {
+        this.editor.setSelection(
+          Selection.createWithDirection(
+            start.lineNumber,
+            start.column,
+            end.lineNumber,
+            end.column,
+            thisDirection === 'RTL'
+              ? SelectionDirection.RTL
+              : SelectionDirection.LTR
+          )
+        );
+      }
     }
 
     if (this.props.searchQuery === '' && prevProps.searchQuery !== '') {
@@ -494,6 +510,188 @@ class NoteContentEditor extends Component<Props> {
     this.editor?.trigger('editorCommand', 'insertChecklist', null);
   };
 
+  handleMarkdownCommand = (event: Event) => {
+    const detail = (event as CustomEvent).detail ?? {};
+    const action = detail.action as string | undefined;
+    if (!action || !this.editor || this.state.editor !== 'full') {
+      return;
+    }
+
+    const model = this.editor.getModel();
+    if (!model) {
+      return;
+    }
+
+    const selection = this.editor.getSelection() ?? model.getFullModelRange();
+
+    const wrapSelection = (prefix: string, suffix = prefix) => {
+      const isEmpty = selection.isEmpty();
+      const selectedText = model.getValueInRange(selection);
+      const text = isEmpty
+        ? `${prefix}${suffix}`
+        : `${prefix}${selectedText}${suffix}`;
+      this.editor!.executeEdits('markdownCommand', [
+        { range: selection, text, forceMoveMarkers: true },
+      ]);
+      if (isEmpty) {
+        const pos = selection.getStartPosition();
+        this.editor!.setPosition({
+          lineNumber: pos.lineNumber,
+          column: pos.column + prefix.length,
+        });
+      } else {
+        // keep original selection inside the wrapper
+        this.editor!.setSelection(
+          new Range(
+            selection.startLineNumber,
+            selection.startColumn + prefix.length,
+            selection.endLineNumber,
+            selection.endColumn + prefix.length
+          )
+        );
+      }
+    };
+
+    const prefixLines = (prefix: string) => {
+      const edits: Editor.IIdentifiedSingleEditOperation[] = [];
+      for (
+        let line = selection.startLineNumber;
+        line <= selection.endLineNumber;
+        line++
+      ) {
+        const current = model.getLineContent(line);
+        if (current.startsWith(prefix)) {
+          // toggle off
+          edits.push({
+            range: new Range(line, 1, line, prefix.length + 1),
+            text: '',
+            forceMoveMarkers: true,
+          });
+        } else {
+          edits.push({
+            range: new Range(line, 1, line, 1),
+            text: prefix,
+            forceMoveMarkers: true,
+          });
+        }
+      }
+      this.editor!.executeEdits('markdownCommand', edits);
+    };
+
+    switch (action) {
+      case 'heading1':
+        return prefixLines('# ');
+      case 'heading2':
+        return prefixLines('## ');
+      case 'bold':
+        return wrapSelection('**');
+      case 'italic':
+        return wrapSelection('*');
+      case 'strike':
+        return wrapSelection('~~');
+      case 'code':
+        return wrapSelection('`');
+      case 'quote':
+        return prefixLines('> ');
+      case 'bullets':
+        return prefixLines('- ');
+      case 'numbers':
+        return prefixLines('1. ');
+      case 'link': {
+        const isEmpty = selection.isEmpty();
+        const selectedText = model.getValueInRange(selection) || 'link text';
+        const text = isEmpty
+          ? `[link text](https://)`
+          : `[${selectedText}](https://)`;
+        this.editor!.executeEdits('markdownCommand', [
+          { range: selection, text, forceMoveMarkers: true },
+        ]);
+        return;
+      }
+      case 'indent':
+        return this.editor.trigger(
+          'markdownCommand',
+          'editor.action.indentLines',
+          null
+        );
+      case 'outdent':
+        return this.editor.trigger(
+          'markdownCommand',
+          'editor.action.outdentLines',
+          null
+        );
+    }
+  };
+
+  handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    // Let regular text paste go through; only intercept when there is an image.
+    const items = e.clipboardData?.items;
+    if (!items || !this.editor || this.state.editor !== 'full') {
+      return;
+    }
+
+    const imageItem = Array.from(items).find((item) =>
+      item.type.startsWith('image/')
+    );
+
+    if (!imageItem) {
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) {
+      return;
+    }
+
+    e.preventDefault();
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const mimeType = file.type || 'image/png';
+
+      const model = this.editor?.getModel();
+      if (!model) {
+        return;
+      }
+
+      const saveToAssets =
+        typeof window.electron?.saveNoteAssetFromDataUrl === 'function';
+
+      if (!saveToAssets) {
+        const markdown = `![pasted-image](${dataUrl})`;
+        const selection =
+          this.editor!.getSelection() ?? model.getFullModelRange();
+        this.editor!.executeEdits('pasteImage', [
+          { range: selection, text: markdown, forceMoveMarkers: true },
+        ]);
+        this.editor!.focus();
+        return;
+      }
+
+      const assetRelPath = window.electron.saveNoteAssetFromDataUrl({
+        noteId: this.props.noteId,
+        note: this.props.note,
+        folders: Array.from(this.props.folders),
+        mimeType,
+        dataUrl,
+      });
+
+      const markdown = assetRelPath
+        ? `![pasted-image](${assetRelPath})`
+        : `![pasted-image](${dataUrl})`;
+
+      const selection =
+        this.editor!.getSelection() ?? model.getFullModelRange();
+      this.editor!.executeEdits('pasteImage', [
+        { range: selection, text: markdown, forceMoveMarkers: true },
+      ]);
+      this.editor!.focus();
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   handleUndoRedo = (e: Event) => {
     const event = e as InputEvent;
     switch (event.inputType) {
@@ -599,21 +797,334 @@ class NoteContentEditor extends Component<Props> {
       inherit: true,
       rules: [],
       colors: {
-        'editor.foreground': '#ffffff',
-        'editor.background': '#1d2327', // $studio-gray-90
-        'editor.selectionBackground': '#646970', // $studio-gray-50
+        'editor.foreground': '#f5f5f5',
+        'editor.background': '#0f0f0f',
+        'editor.selectionBackground': '#2c3338', // $studio-gray-80
         'scrollbarSlider.activeBackground': '#646970', // $studio-gray-50
-        'scrollbarSlider.background': '#2c3338', // $studio-gray-80
-        'scrollbarSlider.hoverBackground': '#1d2327', // $studio-gray-90
-        'textLink.foreground': '#ced9f2', // studio-simplenote-blue-5
+        'scrollbarSlider.background': '#1f1f1f',
+        'scrollbarSlider.hoverBackground': '#2c3338', // $studio-gray-80
+        'textLink.foreground': '#84a4f0', // $studio-simplenote-blue-20
       },
     });
+  };
+
+  isMarkdownEnabled = () => this.props.note.systemTags.includes('markdown');
+
+  scheduleMarkdownDecorators = () => {
+    if (this.markdownTimer) {
+      clearTimeout(this.markdownTimer);
+    }
+    this.markdownTimer = setTimeout(() => {
+      this.setMarkdownDecorators();
+    }, 60);
+  };
+
+  setMarkdownDecorators = () => {
+    if (!this.editor || this.state.editor !== 'full') {
+      return;
+    }
+
+    const model = this.editor.getModel();
+    if (!model) {
+      return;
+    }
+
+    if (!this.isMarkdownEnabled()) {
+      this.markdownDecorations?.clear();
+      return;
+    }
+
+    const selection = this.editor.getSelection();
+    const activeLineStart = selection?.startLineNumber ?? -1;
+    const activeLineEnd = selection?.endLineNumber ?? -1;
+
+    const visibleRanges = this.editor.getVisibleRanges();
+    const decorations: Editor.IModelDeltaDecoration[] = [];
+
+    const addHide = (lineNumber: number, startIdx: number, endIdx: number) => {
+      if (endIdx <= startIdx) {
+        return;
+      }
+      decorations.push({
+        range: new Range(lineNumber, startIdx + 1, lineNumber, endIdx + 1),
+        options: { inlineClassName: 'md-syntax-hidden' },
+      });
+    };
+
+    const addStyle = (
+      lineNumber: number,
+      startIdx: number,
+      endIdx: number,
+      inlineClassName: string
+    ) => {
+      if (endIdx <= startIdx) {
+        return;
+      }
+      decorations.push({
+        range: new Range(lineNumber, startIdx + 1, lineNumber, endIdx + 1),
+        options: { inlineClassName },
+      });
+    };
+
+    // Expand parsing window a bit around the viewport so scrolling doesn’t “pop”.
+    const startLine =
+      visibleRanges.length > 0
+        ? Math.max(1, visibleRanges[0].startLineNumber - 40)
+        : 1;
+    const endLine =
+      visibleRanges.length > 0
+        ? Math.min(model.getLineCount(), visibleRanges[0].endLineNumber + 80)
+        : model.getLineCount();
+
+    // Track fenced code blocks (``` / ~~~) within the scanned window.
+    // This is approximate (viewport-local) but good enough for live preview.
+    let inFence = false;
+    let fenceMarker: '```' | '~~~' | null = null;
+
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
+      const isActiveLine =
+        lineNumber >= activeLineStart && lineNumber <= activeLineEnd;
+
+      const line = model.getLineContent(lineNumber);
+      if (!line) {
+        continue;
+      }
+
+      const fenceMatch = /^(\s*)(```+|~~~+)(.*)$/.exec(line);
+      if (fenceMatch) {
+        const marker = fenceMatch[2].startsWith('~') ? '~~~' : '```';
+        if (!inFence) {
+          inFence = true;
+          fenceMarker = marker;
+        } else if (fenceMarker === marker) {
+          inFence = false;
+          fenceMarker = null;
+        }
+
+        // Hide the fence markers when not editing this line.
+        const prefixLen = fenceMatch[1].length;
+        if (!isActiveLine) {
+          addHide(lineNumber, prefixLen, prefixLen + fenceMatch[2].length);
+        }
+        addStyle(lineNumber, 0, line.length, 'md-code-block');
+        continue;
+      }
+
+      if (inFence) {
+        addStyle(lineNumber, 0, line.length, 'md-code-block');
+        continue;
+      }
+
+      // Headings: #, ##, ...
+      const headingMatch = /^(\s*)(#{1,6})\s+/.exec(line);
+      if (headingMatch) {
+        const prefixLen = headingMatch[1].length;
+        const hashesLen = headingMatch[2].length;
+        if (!isActiveLine) {
+          addHide(lineNumber, prefixLen, prefixLen + hashesLen);
+        }
+        const contentStart = headingMatch[0].length;
+        addStyle(
+          lineNumber,
+          contentStart,
+          line.length,
+          `md-heading md-heading-${hashesLen}`
+        );
+      }
+
+      // Blockquotes: > ...
+      const quoteMatch = /^(\s*)>\s+/.exec(line);
+      if (quoteMatch) {
+        const prefixLen = quoteMatch[1].length;
+        if (!isActiveLine) {
+          addHide(lineNumber, prefixLen, quoteMatch[0].length);
+        }
+        addStyle(lineNumber, quoteMatch[0].length, line.length, 'md-quote');
+      }
+
+      // Lists: - / * / + / 1.
+      const listMatch = /^(\s*)((?:[-+*\u2022])|\d+\.)\s+/.exec(line);
+      if (listMatch) {
+        const prefixLen = listMatch[1].length;
+        const markerLen = listMatch[2].length;
+        if (!isActiveLine) {
+          addHide(lineNumber, prefixLen, prefixLen + markerLen);
+
+          // Render a nice bullet for unordered lists when we hide the marker.
+          if (/^[-+*\u2022]$/.test(listMatch[2])) {
+            decorations.push({
+              range: new Range(
+                lineNumber,
+                prefixLen + 1,
+                lineNumber,
+                prefixLen + 1
+              ),
+              options: { beforeContentClassName: 'md-list-bullet' },
+            });
+          }
+        }
+      }
+
+      // Task lists: - [ ] / - [x]
+      const taskMatch = /^(\s*)([-+*\u2022])\s+\[( |x|X)\]\s+/.exec(line);
+      if (taskMatch && !isActiveLine) {
+        const prefixLen = taskMatch[1].length;
+        const markerLen = taskMatch[2].length;
+        const isChecked = taskMatch[3].toLowerCase() === 'x';
+        // hide "- " and "[ ] "
+        addHide(lineNumber, prefixLen, prefixLen + markerLen);
+        addHide(lineNumber, prefixLen + markerLen, taskMatch[0].length);
+        decorations.push({
+          range: new Range(
+            lineNumber,
+            prefixLen + 1,
+            lineNumber,
+            prefixLen + 1
+          ),
+          options: {
+            beforeContentClassName: isChecked
+              ? 'md-checkbox-checked'
+              : 'md-checkbox-unchecked',
+          },
+        });
+      }
+
+      // Tables (GFM-ish): hide pipes and apply a subtle style.
+      const looksLikeTableRow = line.includes('|');
+      const looksLikeTableSep =
+        /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(line);
+      if (looksLikeTableRow) {
+        addStyle(
+          lineNumber,
+          0,
+          line.length,
+          looksLikeTableSep ? 'md-table-sep' : 'md-table-row'
+        );
+        for (let i = 0; i < line.length; i++) {
+          if (line[i] === '|') {
+            addHide(lineNumber, i, i + 1);
+          }
+        }
+      }
+
+      // Inline parsing (simple, non-nested).
+      const occupied = new Array(line.length).fill(false);
+      const overlaps = (s: number, e: number) => {
+        for (let i = s; i < e; i++) {
+          if (occupied[i]) return true;
+        }
+        return false;
+      };
+      const occupy = (s: number, e: number) => {
+        for (let i = s; i < e; i++) occupied[i] = true;
+      };
+
+      // Inline code: `code`
+      const codeRe = /`([^`]+?)`/g;
+      for (let m = codeRe.exec(line); m; m = codeRe.exec(line)) {
+        const fullStart = m.index;
+        const fullEnd = m.index + m[0].length;
+        if (overlaps(fullStart, fullEnd)) continue;
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, fullStart + 1);
+          addHide(lineNumber, fullEnd - 1, fullEnd);
+        }
+        addStyle(lineNumber, fullStart + 1, fullEnd - 1, 'md-inline-code');
+        occupy(fullStart, fullEnd);
+      }
+
+      // Images: ![alt](url) (show alt text as a placeholder)
+      const imageRe = /!\[([^\]]*?)\]\(([^)]+?)\)/g;
+      for (let m = imageRe.exec(line); m; m = imageRe.exec(line)) {
+        const fullStart = m.index;
+        const fullEnd = m.index + m[0].length;
+        if (overlaps(fullStart, fullEnd)) continue;
+        const altStart = fullStart + 2;
+        const altEnd = altStart + m[1].length;
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, altStart); // ![
+          addHide(lineNumber, altEnd, fullEnd); // ](url)
+        }
+        if (altEnd > altStart) {
+          addStyle(lineNumber, altStart, altEnd, 'md-image');
+        } else {
+          addStyle(lineNumber, altStart, altStart, 'md-image');
+        }
+        occupy(fullStart, fullEnd);
+      }
+
+      // Links: [text](url)
+      const linkRe = /\[([^\]]+?)\]\(([^)]+?)\)/g;
+      for (let m = linkRe.exec(line); m; m = linkRe.exec(line)) {
+        const fullStart = m.index;
+        const fullEnd = m.index + m[0].length;
+        if (overlaps(fullStart, fullEnd)) continue;
+        const textStart = fullStart + 1;
+        const textEnd = textStart + m[1].length;
+        const afterTextStart = textEnd;
+        // Hide [, ], (, ), and the URL. Keep only the link text visible.
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, fullStart + 1); // [
+          addHide(lineNumber, afterTextStart, fullEnd); // ](url)
+        }
+        addStyle(lineNumber, textStart, textEnd, 'md-link');
+        occupy(fullStart, fullEnd);
+      }
+
+      // Strikethrough: ~~text~~
+      const strikeRe = /~~([^~]+?)~~/g;
+      for (let m = strikeRe.exec(line); m; m = strikeRe.exec(line)) {
+        const fullStart = m.index;
+        const fullEnd = m.index + m[0].length;
+        if (overlaps(fullStart, fullEnd)) continue;
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, fullStart + 2);
+          addHide(lineNumber, fullEnd - 2, fullEnd);
+        }
+        addStyle(lineNumber, fullStart + 2, fullEnd - 2, 'md-strike');
+        occupy(fullStart, fullEnd);
+      }
+
+      // Bold: **text**
+      const boldRe = /\*\*([^*\n]+?)\*\*/g;
+      for (let m = boldRe.exec(line); m; m = boldRe.exec(line)) {
+        const fullStart = m.index;
+        const fullEnd = m.index + m[0].length;
+        if (overlaps(fullStart, fullEnd)) continue;
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, fullStart + 2);
+          addHide(lineNumber, fullEnd - 2, fullEnd);
+        }
+        addStyle(lineNumber, fullStart + 2, fullEnd - 2, 'md-bold');
+        occupy(fullStart, fullEnd);
+      }
+
+      // Italic: *text* (simple; ignores ** and list markers)
+      const italicRe = /(^|[^*])\*([^*\n]+?)\*/g;
+      for (let m = italicRe.exec(line); m; m = italicRe.exec(line)) {
+        const fullStart = m.index + m[1].length;
+        const fullEnd = fullStart + 1 + m[2].length + 1;
+        if (overlaps(fullStart, fullEnd)) continue;
+        // Skip common cases like list markers "* "
+        if (m[2].trim().length === 0) continue;
+        if (!isActiveLine) {
+          addHide(lineNumber, fullStart, fullStart + 1);
+          addHide(lineNumber, fullEnd - 1, fullEnd);
+        }
+        addStyle(lineNumber, fullStart + 1, fullEnd - 1, 'md-italic');
+        occupy(fullStart, fullEnd);
+      }
+    }
+
+    this.markdownDecorations?.clear();
+    this.markdownDecorations =
+      this.editor?.createDecorationsCollection(decorations);
   };
 
   editorReady: EditorDidMount = (editor, monaco) => {
     this.editor = editor;
 
-    monaco.languages.registerLinkProvider('plaintext', {
+    const linkProvider: languages.LinkProvider = {
       provideLinks: (model) => {
         const matches = model.findMatches(
           'simplenote://note/[a-zA-Z0-9-]+',
@@ -636,7 +1147,7 @@ class NoteContentEditor extends Component<Props> {
           return;
         }
 
-        const [_fullMatch, linkedNoteId] = match as [string, T.EntityId];
+        const linkedNoteId = match[1] as unknown as T.EntityId;
 
         // if we try to open a note that doesn't exist in local state,
         // then we annoyingly close the open note without opening anything else
@@ -646,7 +1157,12 @@ class NoteContentEditor extends Component<Props> {
         }
         return { ...link, url: '#' }; // tell Monaco to do nothing and not complain about it
       },
-    });
+    };
+
+    const linkProviderHandles = [
+      monaco.languages.registerLinkProvider('plaintext', linkProvider),
+      monaco.languages.registerLinkProvider('markdown', linkProvider),
+    ];
 
     /* remove unwanted context menu items */
     // see https://github.com/Microsoft/monaco-editor/issues/1058#issuecomment-468681208
@@ -799,7 +1315,7 @@ class NoteContentEditor extends Component<Props> {
       }
     });
 
-    window.electron?.receive('editorCommand', (command) => {
+    window.electron?.receive('editorCommand', (command: { action: string }) => {
       switch (command.action) {
         case 'findAgain':
           this.setNextSearchSelection();
@@ -838,9 +1354,14 @@ class NoteContentEditor extends Component<Props> {
     }
 
     this.setDecorators();
+    this.setMarkdownDecorators();
     // make component rerender after the decorators are set.
     this.setState({});
-    editor.onDidChangeModelContent(() => this.setDecorators());
+    editor.onDidChangeModelContent(() => {
+      this.setDecorators();
+      this.scheduleMarkdownDecorators();
+    });
+    editor.onDidScrollChange(() => this.scheduleMarkdownDecorators());
 
     // register completion provider for internal links
     const completionProviderHandle =
@@ -849,6 +1370,7 @@ class NoteContentEditor extends Component<Props> {
         this.completionProvider(this.state.noteId, editor)
       );
     editor.onDidDispose(() => completionProviderHandle?.dispose());
+    editor.onDidDispose(() => linkProviderHandles.forEach((h) => h.dispose()));
 
     document.oncopy = (event) => {
       // @TODO: This is selecting everything in the app but we should only
@@ -904,6 +1426,8 @@ class NoteContentEditor extends Component<Props> {
             newEnd,
             newDirection
           );
+
+        this.scheduleMarkdownDecorators();
       }
     );
 
@@ -1158,6 +1682,7 @@ class NoteContentEditor extends Component<Props> {
   render() {
     const { lineLength, noteId, searchQuery, theme } = this.props;
     const { content, editor, overTodo } = this.state;
+    const isMarkdown = this.isMarkdownEnabled();
 
     const editorPadding = getEditorPadding(
       lineLength,
@@ -1170,6 +1695,7 @@ class NoteContentEditor extends Component<Props> {
         className={`note-content-editor-shell${
           overTodo ? ' cursor-pointer' : ''
         }`}
+        onPaste={this.handlePaste}
         onClick={(e: React.MouseEvent) => {
           // click was on the editor body, let the editor handle it
           const target = e.target as HTMLDivElement;
@@ -1200,7 +1726,7 @@ class NoteContentEditor extends Component<Props> {
             key={noteId}
             editorDidMount={this.editorReady}
             editorWillMount={this.editorInit}
-            language="plaintext"
+            language={isMarkdown ? 'markdown' : 'plaintext'}
             theme={theme === 'dark' ? 'simplenote-dark' : 'simplenote'}
             onChange={this.updateNote}
             options={{
@@ -1225,7 +1751,7 @@ class NoteContentEditor extends Component<Props> {
               matchBrackets: 'never',
               minimap: { enabled: false },
               multiCursorLimit: 1,
-              occurrencesHighlight: 'off',
+              occurrencesHighlight: false,
               overviewRulerBorder: false,
               padding: { top: 40, bottom: 0 },
               quickSuggestions: false,
@@ -1262,16 +1788,19 @@ class NoteContentEditor extends Component<Props> {
 }
 
 const mapStateToProps: S.MapState<StateProps> = (state) => ({
-  editorSelection: state.ui.editorSelection.get(state.ui.openedNote) ?? [
-    0,
-    0,
-    'LTR',
-  ],
+  editorSelection: state.ui.openedNote
+    ? (state.ui.editorSelection.get(state.ui.openedNote as T.EntityId) ?? [
+        0,
+        0,
+        'LTR',
+      ])
+    : [0, 0, 'LTR'],
+  folders: state.data.folders,
   isFocusMode: state.settings.focusModeEnabled,
   keyboardShortcuts: state.settings.keyboardShortcuts,
   lineLength: state.settings.lineLength,
-  noteId: state.ui.openedNote,
-  note: state.data.notes.get(state.ui.openedNote),
+  noteId: state.ui.openedNote as T.EntityId,
+  note: state.data.notes.get(state.ui.openedNote as T.EntityId) as T.Note,
   notes: state.data.notes,
   searchQuery: state.ui.searchQuery,
   selectedSearchMatchIndex: state.ui.selectedSearchMatchIndex,

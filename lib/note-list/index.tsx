@@ -159,6 +159,8 @@ const sidebarTitle = (
   switch (collection.type) {
     case 'tag':
       return openedTag;
+    case 'folder':
+      return 'Folder';
     case 'trash':
       return 'Trash';
     case 'untagged':

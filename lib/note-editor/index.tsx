@@ -3,7 +3,6 @@ import { connect } from 'react-redux';
 import SearchResultsBar from '../search-results-bar';
 import TagField from '../tag-field';
 import NoteDetail from '../note-detail';
-import NotePreview from '../components/note-preview';
 import actions from '../state/actions';
 import * as selectors from '../state/selectors';
 
@@ -13,7 +12,6 @@ import SimplenoteCompactLogo from '../icons/simplenote-compact';
 
 type StateProps = {
   allTags: Map<T.TagHash, T.Tag>;
-  editMode: boolean;
   isEditorActive: boolean;
   isSearchActive: boolean;
   isSmallScreen: boolean;
@@ -27,7 +25,6 @@ type StateProps = {
 type DispatchProps = {
   toggleMarkdown: (noteId: T.EntityId, shouldEnableMarkdown: boolean) => any;
   toggleNoteList: () => any;
-  toggleEditMode: () => any;
 };
 
 type Props = DispatchProps & StateProps;
@@ -59,14 +56,6 @@ export class NoteEditor extends Component<Props> {
     // toggle Markdown enabled
     if (note && cmdOrCtrl && shiftKey && 'm' === key) {
       toggleMarkdown(noteId, !this.markdownEnabled());
-      event.stopPropagation();
-      event.preventDefault();
-      return false;
-    }
-
-    // toggle editor mode
-    if (cmdOrCtrl && shiftKey && 'p' === key && this.markdownEnabled()) {
-      this.props.toggleEditMode();
       event.stopPropagation();
       event.preventDefault();
       return false;
@@ -114,8 +103,7 @@ export class NoteEditor extends Component<Props> {
   };
 
   render() {
-    const { editMode, hasSearchQuery, hasSearchMatchesInNote, note, noteId } =
-      this.props;
+    const { hasSearchQuery, hasSearchMatchesInNote, note, noteId } = this.props;
 
     if (!note) {
       return (
@@ -126,17 +114,12 @@ export class NoteEditor extends Component<Props> {
     }
 
     const isTrashed = !!note.deleted;
-
     return (
       <div className="note-editor">
-        {editMode || !note.systemTags.includes('markdown') ? (
-          <NoteDetail
-            storeFocusEditor={this.storeFocusEditor}
-            storeHasFocus={this.storeEditorHasFocus}
-          />
-        ) : (
-          <NotePreview noteId={noteId} />
-        )}
+        <NoteDetail
+          storeFocusEditor={this.storeFocusEditor}
+          storeHasFocus={this.storeEditorHasFocus}
+        />
         {note && !isTrashed && (
           <TagField
             storeFocusTagField={this.storeFocusTagField}
@@ -151,7 +134,6 @@ export class NoteEditor extends Component<Props> {
 
 const mapStateToProps: S.MapState<StateProps> = (state) => ({
   allTags: state.data.tags,
-  editMode: state.ui.editMode,
   keyboardShortcuts: state.settings.keyboardShortcuts,
   isEditorActive: !state.ui.showNavigation,
   noteId: state.ui.openedNote,
@@ -167,7 +149,6 @@ const mapStateToProps: S.MapState<StateProps> = (state) => ({
 const mapDispatchToProps: S.MapDispatch<DispatchProps> = {
   toggleNoteList: actions.ui.toggleNoteList,
   toggleMarkdown: actions.data.markdownNote,
-  toggleEditMode: actions.ui.toggleEditMode,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(NoteEditor);

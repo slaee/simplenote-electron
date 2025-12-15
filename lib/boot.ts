@@ -103,6 +103,18 @@ const bootOffline = () => {
         editMode: store.getState().ui.editMode,
       });
 
+      // Default into the first available folder (local notebooks) so the note
+      // list becomes the "notes of this folder" view.
+      try {
+        const { folders } = store.getState().data as any;
+        const firstFolderId = folders?.keys?.().next?.().value;
+        if (firstFolderId) {
+          store.dispatch({ type: 'OPEN_FOLDER', folderId: firstFolderId });
+        }
+      } catch {
+        // ignore
+      }
+
       const rootElement = document.getElementById('root');
 
       if (rootElement) {

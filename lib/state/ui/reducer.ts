@@ -109,11 +109,15 @@ const collection: A.Reducer<T.Collection> = (
         return { type: 'all' };
       } else if (state.type === 'tag') {
         return { type: 'tag', tagName: state.tagName };
+      } else if (state.type === 'folder') {
+        return { type: 'folder', folderId: state.folderId };
       }
       return state;
     }
     case 'OPEN_TAG':
       return { type: 'tag', tagName: action.tagName };
+    case 'OPEN_FOLDER':
+      return { type: 'folder', folderId: action.folderId };
     case 'RENAME_TAG': {
       if (state.type === 'tag' && state.tagName === action.oldTagName) {
         return { type: 'tag', tagName: action.newTagName };
@@ -186,6 +190,7 @@ const editingTags: A.Reducer<boolean> = (state = false, action) => {
     case 'OPEN_NOTE':
     case 'SELECT_NOTE':
     case 'OPEN_TAG':
+    case 'OPEN_FOLDER':
     case 'SELECT_TRASH':
     case 'SHOW_ALL_NOTES':
     case 'SHOW_UNTAGGED_NOTES':
@@ -358,19 +363,15 @@ const showNoteInfo: A.Reducer<boolean> = (state = false, action) => {
   }
 };
 
-const showNavigation: A.Reducer<boolean> = (state = false, action) => {
+// Desktop-like layout: show the NavigationBar (folders) by default; user can collapse it.
+const showNavigation: A.Reducer<boolean> = (state = true, action) => {
   switch (action.type) {
     case 'NAVIGATION_TOGGLE':
       return !state;
 
-    case 'OPEN_TAG':
-    case 'SELECT_TRASH':
-    case 'SHOW_ALL_NOTES':
-    case 'SHOW_UNTAGGED_NOTES':
-      return false;
     case 'SHOW_DIALOG':
       if (action.name === 'SETTINGS') {
-        return false;
+        return state;
       }
       return state;
     default:

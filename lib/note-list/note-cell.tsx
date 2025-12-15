@@ -11,7 +11,6 @@ import { noteTitleAndPreview } from '../utils/note-utils';
 import { withCheckboxCharacters } from '../utils/task-transform';
 
 import actions from '../state/actions';
-import * as selectors from '../state/selectors';
 
 import * as S from '../state';
 import * as T from '../types';
@@ -175,10 +174,11 @@ const mapStateToProps: S.MapState<StateProps, OwnProps> = (
   { noteId }
 ) => ({
   displayMode: state.settings.noteDisplay,
-  hasPendingChanges: selectors.noteHasPendingChanges(state, noteId),
-  isOffline: state.simperium.connectionStatus === 'offline',
+  // In offline mode we consider notes always locally saved; no pending sync.
+  hasPendingChanges: false,
+  isOffline: false,
   isOpened: state.ui.openedNote === noteId,
-  lastUpdated: state.simperium.lastRemoteUpdate.get(noteId) ?? -Infinity,
+  lastUpdated: -Infinity,
   note: state.data.notes.get(noteId),
   searchQuery: state.ui.searchQuery,
 });

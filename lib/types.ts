@@ -15,6 +15,10 @@ export type TagHash = Brand<string, 'TagHash'> | EntityId;
 export type TagName = Brand<string, 'TagName'>;
 export type SystemTag = 'markdown' | 'pinned' | 'published' | 'shared';
 
+// Offline-only organization model (Notebooks / Folders)
+export type NotebookId = Brand<string, 'NotebookId'>;
+export type FolderId = Brand<string, 'FolderId'>;
+
 export type Note = {
   content: string;
   creationDate: SecondsEpoch;
@@ -24,6 +28,8 @@ export type Note = {
   shareURL?: string;
   systemTags: SystemTag[];
   tags: TagName[];
+  // Offline-only folder assignment. If missing, note belongs to the default folder.
+  folderId?: FolderId | null;
 };
 
 export type NoteEntity = Entity<Note>;
@@ -34,6 +40,18 @@ export type Tag = {
 };
 
 export type TagEntity = Entity<Tag>;
+
+export type Notebook = {
+  index?: number;
+  name: string;
+};
+
+export type Folder = {
+  index?: number;
+  name: string;
+  notebookId: NotebookId;
+  parentFolderId?: FolderId | null;
+};
 
 export type Preferences = {
   analytics_enabled: boolean | null;
@@ -53,6 +71,7 @@ export type VerificationState =
 export type Collection =
   | { type: 'all' }
   | { type: 'tag'; tagName: TagName }
+  | { type: 'folder'; folderId: FolderId }
   | { type: 'trash' }
   | { type: 'untagged' };
 

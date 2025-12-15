@@ -53,6 +53,12 @@ const NoNotes = () => {
           icon: <TagIcon />,
           button: null,
         };
+      case 'folder':
+        return {
+          message: 'No notes in this folder',
+          icon: <NotesIcon />,
+          button: getButton(),
+        };
       case 'trash':
         return {
           message: 'Your trash is empty',

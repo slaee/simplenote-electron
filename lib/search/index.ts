@@ -20,6 +20,7 @@ type SearchNote = {
   modificationDate: number;
   isPinned: boolean;
   isTrashed: boolean;
+  folderId: T.FolderId | null;
 };
 
 type SearchState = {
@@ -43,6 +44,7 @@ const toSearchNote = (note: Partial<T.Note>): SearchNote => ({
   modificationDate: note.modificationDate ?? Date.now() / 1000,
   isPinned: note.systemTags?.includes('pinned') ?? false,
   isTrashed: !!note.deleted,
+  folderId: (note.folderId as T.FolderId | null) ?? null,
 });
 
 export const tagsFromSearch = (query: string) => {
@@ -216,6 +218,13 @@ export const middleware: S.Middleware = (store) => {
 
       const showTrash = collection.type === 'trash';
       if (showTrash !== note.isTrashed) {
+        continue;
+      }
+
+      if (
+        collection.type === 'folder' &&
+        note.folderId !== collection.folderId
+      ) {
         continue;
       }
 
@@ -429,6 +438,10 @@ export const middleware: S.Middleware = (store) => {
         if ('undefined' !== typeof action.changes.systemTags) {
           note.isPinned = action.changes.systemTags.includes('pinned');
         }
+        if ('undefined' !== typeof action.changes.folderId) {
+          note.folderId =
+            (action.changes.folderId as T.FolderId | null) ?? null;
+        }
         indexNote(action.noteId);
         return next(withSearch(action));
       }
@@ -437,6 +450,13 @@ export const middleware: S.Middleware = (store) => {
         searchState.collection = {
           type: 'tag',
           tagName: action.tagName,
+        };
+        return next(withSearch(action));
+
+      case 'OPEN_FOLDER':
+        searchState.collection = {
+          type: 'folder',
+          folderId: action.folderId,
         };
         return next(withSearch(action));
 

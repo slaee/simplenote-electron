@@ -1,34 +1,122 @@
 const { contextBridge, ipcRenderer, remote } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const sanitizeFilename = require('sanitize-filename');
 
-// Lazy-load better-sqlite3 so tests or non-Electron environments that
-// touch this file but don't actually execute the DB code won't break.
-let db = null;
-const getDb = () => {
-  if (db) {
-    return db;
+const NOTES_ROOT_NAME = 'SimpleNotes';
+const META_DIR_NAME = '.simplenote';
+const META_FILE_NAME = 'store.json';
+const REVISIONS_FILE_NAME = 'revisions.json';
+
+const getNotesRoot = () => {
+  const documents = remote.app.getPath('documents');
+  return path.join(documents, NOTES_ROOT_NAME);
+};
+
+const ensureDir = (dirPath) => {
+  fs.mkdirSync(dirPath, { recursive: true });
+};
+
+const readJsonFile = (filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to read JSON file:', filePath, e);
+    return null;
+  }
+};
+
+const writeJsonFile = (filePath, data) => {
+  try {
+    ensureDir(path.dirname(filePath));
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to write JSON file:', filePath, e);
+  }
+};
+
+const safeRmDir = (root, dirRel) => {
+  try {
+    if (!dirRel) return;
+    const full = path.join(root, dirRel);
+    // safety: only allow deleting within our root
+    if (!full.startsWith(root)) {
+      return;
+    }
+    if (fs.existsSync(full)) {
+      fs.rmSync(full, { recursive: true, force: true });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to delete directory:', dirRel, e);
+  }
+};
+
+const safeName = (name, fallback) => {
+  const cleaned = sanitizeFilename(String(name || '').trim()) || fallback;
+  return cleaned.length > 0 ? cleaned : fallback;
+};
+
+const noteTitleFromContent = (content) => {
+  const s = String(content || '');
+  const match = /^\s*([^\n\r]{1,64})/m.exec(s);
+  let title = match?.[1]?.trim() || 'New Note';
+  // If the first line is a Markdown heading, strip the leading hashes.
+  title = title.replace(/^\s*#{1,6}\s+/, '').trim();
+  return title || 'New Note';
+};
+
+const buildFolderPath = (foldersArray, notebooksArray, folderId) => {
+  const folders = new Map(foldersArray || []);
+  const notebooks = new Map(notebooksArray || []);
+  const parts = [];
+  let cur = folderId;
+  const seen = new Set();
+  while (cur && folders.has(cur) && !seen.has(cur)) {
+    seen.add(cur);
+    const folder = folders.get(cur);
+    parts.unshift(safeName(folder.name, 'Folder'));
+    cur = folder.parentFolderId || null;
   }
 
-  // `remote.app` is already used below for dialogs, so we reuse it here
-  // to locate the per-user application data directory.
-  const Database = require('better-sqlite3');
-  const userDataPath = remote.app.getPath('userData');
-  const dbPath = path.join(userDataPath, 'notes.sqlite3');
+  // Include notebook name as the first path segment (keeps notebooks separate on disk)
+  const topFolder =
+    folderId && folders.has(folderId) ? folders.get(folderId) : null;
+  const notebookId = topFolder?.notebookId;
+  const notebook =
+    notebookId && notebooks.has(notebookId) ? notebooks.get(notebookId) : null;
+  const notebookName = safeName(notebook?.name ?? 'Notebook', 'Notebook');
+  return [notebookName, ...parts];
+};
 
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+const getOrCreateNoteDir = (
+  root,
+  foldersArray,
+  notebooksArray,
+  noteId,
+  note
+) => {
+  const folderParts = buildFolderPath(
+    foldersArray,
+    notebooksArray,
+    note.folderId || null
+  );
+  const folderDir = path.join(root, ...folderParts);
+  ensureDir(folderDir);
 
-  // We keep the storage fairly generic: a single `state` table that stores
-  // the serialized Redux persistence payload, and a `revisions` table that
-  // stores per-note revision history.
-  db.prepare(
-    'CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
-  ).run();
-  db.prepare(
-    'CREATE TABLE IF NOT EXISTS revisions (noteId TEXT PRIMARY KEY, data TEXT NOT NULL)'
-  ).run();
+  const title = noteTitleFromContent(note.content);
+  const noteDirName = safeName(title, 'New Note');
+  const noteDir = path.join(folderDir, noteDirName);
+  ensureDir(noteDir);
+  ensureDir(path.join(noteDir, 'assets'));
 
-  return db;
+  const mdFile = path.join(noteDir, `${noteDirName}.md`);
+  return { noteDir, mdFile, folderDir, noteDirName, folderParts };
 };
 
 const validChannels = [
@@ -73,67 +161,180 @@ const electronAPI = {
         return 'logout';
     }
   },
-  // SQLite-backed persistence helpers used by the renderer-side
+  // Filesystem-backed persistence helpers used by the renderer-side
   // `lib/state/persistence.ts` module when running under Electron.
-  // These intentionally work with plain JSON so they can be safely
-  // passed across the context bridge.
   loadPersistentState: () => {
     try {
-      const database = getDb();
-      const row = database
-        .prepare('SELECT value FROM state WHERE key = ?')
-        .get('state');
-      if (!row) {
+      const root = getNotesRoot();
+      const metaDir = path.join(root, META_DIR_NAME);
+      const metaPath = path.join(metaDir, META_FILE_NAME);
+      const rawMeta = readJsonFile(metaPath);
+      if (!rawMeta) {
         return null;
       }
-      return JSON.parse(row.value);
+
+      // Rehydrate notes content from on-disk markdown files.
+      // `rawMeta` is expected to be the same shape as the old persisted payload,
+      // except that note contents may be omitted or stale.
+      const rootFolders = rawMeta.folders ?? [];
+      const notesArray = rawMeta.notes ?? [];
+      const notePaths = rawMeta.notePaths ?? {};
+      const hydratedNotes = notesArray.map(([noteId, note]) => {
+        try {
+          const mdRel = notePaths?.[noteId]?.mdRel;
+          const mdFile = mdRel ? path.join(root, mdRel) : null;
+          if (mdFile && fs.existsSync(mdFile)) {
+            const content = fs.readFileSync(mdFile, 'utf8');
+            return [noteId, { ...note, content }];
+          }
+        } catch (e) {
+          // ignore per-note read errors
+        }
+        return [noteId, note];
+      });
+
+      return { ...rawMeta, notes: hydratedNotes };
     } catch (e) {
       // If anything goes wrong, signal "no state"; the app will
       // simply start from an empty store.
       // eslint-disable-next-line no-console
-      console.error('Failed to load persistent state from sqlite:', e);
+      console.error('Failed to load persistent state from filesystem:', e);
       return null;
     }
   },
   savePersistentState: (data) => {
     try {
-      const database = getDb();
-      const value = JSON.stringify(data);
-      database
-        .prepare(
-          'INSERT INTO state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
-        )
-        .run('state', value);
+      const root = getNotesRoot();
+      ensureDir(root);
+
+      // Persist metadata
+      const metaDir = path.join(root, META_DIR_NAME);
+      const metaPath = path.join(metaDir, META_FILE_NAME);
+      const previousMeta = readJsonFile(metaPath) ?? {};
+      const prevNotePaths = previousMeta.notePaths ?? {};
+
+      // Store metadata without duplicating full note contents; the markdown files are the source of truth.
+      const notesArray = data.notes ?? [];
+      const metaNotes = notesArray.map(([noteId, note]) => {
+        if (!note) {
+          return [noteId, note];
+        }
+        // Keep everything except content.
+        const { content, ...rest } = note;
+        return [noteId, rest];
+      });
+
+      // Persist each note as a folder containing <Title>.md and assets/
+      const foldersArray = data.folders ?? [];
+      const notebooksArray = data.notebooks ?? [];
+      const nextNotePaths = { ...(previousMeta.notePaths ?? {}) };
+      const activeNoteIds = new Set();
+      notesArray.forEach(([noteId, note]) => {
+        if (!note) {
+          return;
+        }
+        if (note.deleted) {
+          // Remove deleted notes from disk if we have a previous path.
+          safeRmDir(root, prevNotePaths?.[noteId]?.dirRel);
+          delete nextNotePaths[noteId];
+          return;
+        }
+        activeNoteIds.add(noteId);
+        const { mdFile, noteDir } = getOrCreateNoteDir(
+          root,
+          foldersArray,
+          notebooksArray,
+          noteId,
+          note
+        );
+        ensureDir(path.dirname(mdFile));
+        fs.writeFileSync(mdFile, String(note.content || ''), 'utf8');
+
+        nextNotePaths[noteId] = {
+          dirRel: path.relative(root, noteDir),
+          mdRel: path.relative(root, mdFile),
+        };
+      });
+
+      // Cleanup notes that disappeared entirely (e.g. deleted forever).
+      Object.keys(prevNotePaths).forEach((noteId) => {
+        if (!activeNoteIds.has(noteId) && !nextNotePaths[noteId]) {
+          safeRmDir(root, prevNotePaths?.[noteId]?.dirRel);
+          delete nextNotePaths[noteId];
+        }
+      });
+
+      writeJsonFile(metaPath, {
+        ...data,
+        notes: metaNotes,
+        notePaths: nextNotePaths,
+      });
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('Failed to save persistent state to sqlite:', e);
+      console.error('Failed to save persistent state to filesystem:', e);
     }
   },
   loadAllRevisions: () => {
     try {
-      const database = getDb();
-      const rows = database.prepare('SELECT noteId, data FROM revisions').all();
-
-      // Return as an array of [noteId, [ [version, note], ... ]] pairs
-      return rows.map((row) => [row.noteId, JSON.parse(row.data)]);
+      const root = getNotesRoot();
+      const revisionsPath = path.join(root, META_DIR_NAME, REVISIONS_FILE_NAME);
+      const data = readJsonFile(revisionsPath);
+      return Array.isArray(data) ? data : [];
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('Failed to load revisions from sqlite:', e);
+      console.error('Failed to load revisions from filesystem:', e);
       return [];
     }
   },
   saveNoteRevisions: (noteId, revisions) => {
     try {
-      const database = getDb();
-      const value = JSON.stringify(revisions);
-      database
-        .prepare(
-          'INSERT INTO revisions (noteId, data) VALUES (?, ?) ON CONFLICT(noteId) DO UPDATE SET data = excluded.data'
-        )
-        .run(noteId, value);
+      const root = getNotesRoot();
+      const revisionsPath = path.join(root, META_DIR_NAME, REVISIONS_FILE_NAME);
+      const existing = readJsonFile(revisionsPath) ?? [];
+      const map = new Map(existing);
+      map.set(noteId, revisions);
+      writeJsonFile(revisionsPath, Array.from(map.entries()));
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('Failed to save revisions to sqlite:', e);
+      console.error('Failed to save revisions to filesystem:', e);
+    }
+  },
+  saveNoteAssetFromDataUrl: ({ noteId, note, mimeType, dataUrl, folders }) => {
+    try {
+      const root = getNotesRoot();
+      ensureDir(root);
+      const metaPath = path.join(root, META_DIR_NAME, META_FILE_NAME);
+      const rawMeta = readJsonFile(metaPath) ?? {};
+      const notePaths = rawMeta.notePaths ?? {};
+      const existingDirRel = notePaths?.[noteId]?.dirRel;
+      const notebooksArray = rawMeta.notebooks ?? [];
+      const noteDir = existingDirRel
+        ? path.join(root, existingDirRel)
+        : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
+            .noteDir;
+      const assetsDir = path.join(noteDir, 'assets');
+      ensureDir(assetsDir);
+
+      const ext =
+        mimeType === 'image/png'
+          ? 'png'
+          : mimeType === 'image/jpeg'
+            ? 'jpg'
+            : mimeType === 'image/webp'
+              ? 'webp'
+              : 'png';
+
+      const fileName = `pasted-${Date.now()}.${ext}`;
+      const filePath = path.join(assetsDir, fileName);
+      const base64 = String(dataUrl).split(',')[1] || '';
+      fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+
+      // Return a markdown-relative path from the note md file
+      return `assets/${fileName}`;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save note asset:', e);
+      return null;
     }
   },
   send: (channel, data) => {

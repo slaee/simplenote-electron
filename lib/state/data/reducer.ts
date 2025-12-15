@@ -10,6 +10,8 @@ import {
 import type * as A from '../action-types';
 import type * as T from '../../types';
 
+const DEFAULT_FOLDER_ID = 'default-folder' as unknown as T.FolderId;
+
 export const analyticsAllowed: A.Reducer<boolean | null> = (
   state = null,
   action
@@ -285,6 +287,19 @@ export const notes: A.Reducer<Map<T.EntityId, T.Note>> = (
       return changedIt ? next : state;
     }
 
+    case 'DELETE_FOLDER': {
+      // Reassign notes in the deleted folder back to the default folder.
+      const next = new Map(state);
+      let changed = false;
+      next.forEach((note, noteId) => {
+        if (note.folderId === action.folderId) {
+          changed = true;
+          next.set(noteId, modified({ ...note, folderId: DEFAULT_FOLDER_ID }));
+        }
+      });
+      return changed ? next : state;
+    }
+
     default:
       return state;
   }
@@ -544,6 +559,75 @@ export const noteTags: A.Reducer<Map<T.TagHash, Set<T.EntityId>>> = (
   }
 };
 
+export const notebooks: A.Reducer<Map<T.NotebookId, T.Notebook>> = (
+  state = new Map(),
+  action
+) => {
+  switch (action.type) {
+    case 'CREATE_NOTEBOOK':
+      return new Map(state).set(action.notebookId, action.notebook);
+    case 'RENAME_NOTEBOOK': {
+      const existing = state.get(action.notebookId);
+      if (!existing) {
+        return state;
+      }
+      return new Map(state).set(action.notebookId, {
+        ...existing,
+        name: action.name,
+      });
+    }
+    case 'DELETE_NOTEBOOK': {
+      const next = new Map(state);
+      return next.delete(action.notebookId) ? next : state;
+    }
+    default:
+      return state;
+  }
+};
+
+export const folders: A.Reducer<Map<T.FolderId, T.Folder>> = (
+  state = new Map(),
+  action
+) => {
+  switch (action.type) {
+    case 'CREATE_FOLDER':
+      return new Map(state).set(action.folderId, action.folder);
+    case 'RENAME_FOLDER': {
+      const existing = state.get(action.folderId);
+      if (!existing) {
+        return state;
+      }
+      return new Map(state).set(action.folderId, {
+        ...existing,
+        name: action.name,
+      });
+    }
+    case 'DELETE_FOLDER': {
+      // Delete the folder and all descendants so the UI tree stays consistent.
+      const next = new Map(state);
+      const toDelete = new Set<T.FolderId>();
+      const queue: T.FolderId[] = [action.folderId];
+      while (queue.length) {
+        const cur = queue.pop()!;
+        if (toDelete.has(cur)) continue;
+        toDelete.add(cur);
+        next.forEach((folder, folderId) => {
+          if (folder.parentFolderId === cur) {
+            queue.push(folderId);
+          }
+        });
+      }
+      let changed = false;
+      toDelete.forEach((id) => {
+        changed = next.delete(id) || changed;
+      });
+      return changed ? next : state;
+    }
+    default:
+      return state;
+  }
+};
+
 export default combineReducers({
   accountVerification,
   analyticsAllowed,
@@ -552,4 +636,6 @@ export default combineReducers({
   noteTags,
   preferences,
   tags,
+  notebooks,
+  folders,
 });

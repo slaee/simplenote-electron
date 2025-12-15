@@ -142,11 +142,6 @@ export class AboutDialog extends Component<DispatchProps> {
                   </li>
                 )}
                 <li>
-                  <Keys keys={[CmdOrCtrl, 'Shift', 'P']}>
-                    Toggle Markdown preview
-                  </Keys>
-                </li>
-                <li>
                   <Keys keys={[CmdOrCtrl, 'Shift', 'C']}>
                     Insert checklist item
                   </Keys>

@@ -106,6 +106,133 @@ span[dir='ltr'] {
   }
 }
 
+// Monaco “live Markdown preview” styling (single-pane)
+.note-content-editor-shell {
+  /* stylelint-disable-next-line selector-class-pattern */
+  .monaco-editor {
+    .md-syntax-hidden {
+      display: inline-block;
+      width: 0;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .md-bold {
+      font-weight: 700;
+    }
+
+    .md-italic {
+      font-style: italic;
+    }
+
+    .md-strike {
+      text-decoration: line-through;
+      opacity: 0.9;
+    }
+
+    .md-link {
+      color: var(--accent-color);
+      text-decoration: underline;
+    }
+
+    .md-image {
+      color: var(--foreground-color);
+      font-style: italic;
+    }
+
+    .md-inline-code {
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        'Liberation Mono', 'Courier New', monospace;
+      background-color: var(--secondary-color);
+      border-radius: 4px;
+      padding: 0 3px;
+    }
+
+    .md-code-block {
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        'Liberation Mono', 'Courier New', monospace;
+      color: var(--primary-color);
+    }
+
+    .md-table-row {
+      color: var(--primary-color);
+    }
+
+    .md-table-sep {
+      opacity: 0.65;
+    }
+
+    .md-list-bullet::before {
+      content: '•';
+      color: var(--foreground-color);
+      display: inline-block;
+      width: 1em;
+      text-align: center;
+    }
+
+    .md-checkbox-unchecked::before {
+      content: '☐';
+      color: var(--foreground-color);
+      display: inline-block;
+      width: 1em;
+      text-align: center;
+    }
+
+    .md-checkbox-checked::before {
+      content: '☑';
+      color: var(--accent-color);
+      display: inline-block;
+      width: 1em;
+      text-align: center;
+    }
+
+    .md-heading {
+      // approximate browser heading defaults in the original rendered preview
+      font-weight: 600;
+    }
+
+    .md-heading-1 {
+      color: var(--primary-color);
+      font-size: 2em;
+      font-weight: 300;
+    }
+
+    .md-heading-2,
+    .md-heading-3,
+    .md-heading-4,
+    .md-heading-5,
+    .md-heading-6 {
+      color: var(--primary-color);
+    }
+
+    .md-heading-2 {
+      font-size: 1.5em;
+    }
+
+    .md-heading-3 {
+      font-size: 1.25em;
+    }
+
+    .md-heading-4 {
+      font-size: 1.1em;
+    }
+
+    .md-heading-5,
+    .md-heading-6 {
+      font-size: 1em;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .md-quote {
+      font-style: italic;
+      opacity: 0.95;
+    }
+  }
+}
+
 /* Safari requires that it be displayed absolute so that it takes the full height
 */
 .note-content-editor-shell {
