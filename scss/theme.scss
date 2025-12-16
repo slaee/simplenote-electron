@@ -91,11 +91,54 @@ span[dir='ltr'] {
 // Muya editor text color should follow app theme.
 // App sets `document.body.dataset.theme` to 'light' or 'dark' in `lib/app.tsx`.
 body[data-theme='light'] .muya-editor-root {
-  color: #000;
+  color: #000 !important;
+  caret-color: #000;
 }
 
 body[data-theme='dark'] .muya-editor-root {
-  color: #fff;
+  color: #fff !important;
+  caret-color: #fff;
+}
+
+// Muya applies colors to nested nodes; force inheritance for editor subtree.
+body[data-theme='light'] .muya-editor-root * {
+  color: inherit !important;
+}
+
+body[data-theme='dark'] .muya-editor-root * {
+  color: inherit !important;
+}
+
+// Placeholder styling (Muya uses contenteditable placeholders rather than <input> placeholders)
+// Cover common patterns: data-placeholder attr + empty editable pseudo content.
+body[data-theme='light'] .muya-editor-root ::placeholder {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-theme='dark'] .muya-editor-root ::placeholder {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body[data-theme='light'] .muya-editor-root [data-placeholder]::before,
+body[data-theme='light'] .muya-editor-root [data-placeholder]::after {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-theme='dark'] .muya-editor-root [data-placeholder]::before,
+body[data-theme='dark'] .muya-editor-root [data-placeholder]::after {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body[data-theme='light']
+  .muya-editor-root
+  [contenteditable='true']:empty::before {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-theme='dark']
+  .muya-editor-root
+  [contenteditable='true']:empty::before {
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 /* Safari requires that it be displayed absolute so that it takes the full height
