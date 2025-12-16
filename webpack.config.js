@@ -97,6 +97,10 @@ module.exports = () => {
           test: /\.ttf$/,
           type: 'asset/resource',
         },
+        {
+          test: /\.(png|jpe?g|gif|svg|webp)$/i,
+          type: 'asset/resource',
+        },
       ],
     },
     resolve: {

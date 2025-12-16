@@ -14,6 +14,8 @@ import { makeStore } from './state';
 import isDevConfig from './utils/is-dev-config';
 
 import '../scss/style.scss';
+// Muya package currently ships `core.css` (not `style.css`) in our build.
+import '@muyajs/core/lib/core.css';
 
 const ensureNormalization = () =>
   !('normalize' in String.prototype)

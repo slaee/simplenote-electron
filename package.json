@@ -118,6 +118,7 @@
     "@automattic/color-studio": "4.1.0",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.0",
+    "@muyajs/core": "0.0.39",
     "@mui/material": "6.4.6",
     "@mui/styles": "6.4.6",
     "@sentry/react": "7.120.3",

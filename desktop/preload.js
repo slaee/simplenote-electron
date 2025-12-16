@@ -150,8 +150,8 @@ const getOrCreateNoteDir = (
   ensureDir(noteDir);
   ensureDir(path.join(noteDir, 'assets'));
 
-  const mdFile = path.join(noteDir, `${noteDirName}.md`);
-  return { noteDir, mdFile, folderDir, noteDirName, folderParts };
+  const htmlFile = path.join(noteDir, `${noteDirName}.html`);
+  return { noteDir, htmlFile, folderDir, noteDirName, folderParts };
 };
 
 const validChannels = [
@@ -224,18 +224,33 @@ const electronAPI = {
         return null;
       }
 
-      // Rehydrate notes content from on-disk markdown files.
+      // Rehydrate notes content from on-disk HTML files.
       // `rawMeta` is expected to be the same shape as the old persisted payload,
       // except that note contents may be omitted or stale.
       const rootFolders = rawMeta.folders ?? [];
       const notesArray = rawMeta.notes ?? [];
       const notePaths = rawMeta.notePaths ?? {};
+      const TurndownService = (() => {
+        try {
+          // eslint-disable-next-line global-require
+          return require('turndown');
+        } catch {
+          return null;
+        }
+      })();
+      const turndown = TurndownService ? new TurndownService() : null;
+
       const hydratedNotes = notesArray.map(([noteId, note]) => {
         try {
+          // Prefer HTML, but support legacy mdRel for backward compatibility.
+          const htmlRel = notePaths?.[noteId]?.htmlRel;
           const mdRel = notePaths?.[noteId]?.mdRel;
-          const mdFile = mdRel ? path.join(root, mdRel) : null;
-          if (mdFile && fs.existsSync(mdFile)) {
-            const content = fs.readFileSync(mdFile, 'utf8');
+          const fileRel = htmlRel || mdRel;
+          const filePath = fileRel ? path.join(root, fileRel) : null;
+          if (filePath && fs.existsSync(filePath)) {
+            const raw = fs.readFileSync(filePath, 'utf8');
+            // If the stored file is HTML, convert back to markdown for the editor.
+            const content = htmlRel && turndown ? turndown.turndown(raw) : raw;
             return [noteId, { ...note, content }];
           }
         } catch (e) {
@@ -275,11 +290,31 @@ const electronAPI = {
         return [noteId, rest];
       });
 
-      // Persist each note as a folder containing <Title>.md and assets/
+      // Persist each note as a folder containing <Title>.html and assets/
       const foldersArray = data.folders ?? [];
       const notebooksArray = data.notebooks ?? [];
       const nextNotePaths = { ...(previousMeta.notePaths ?? {}) };
       const activeNoteIds = new Set();
+
+      // Convert markdown -> HTML when persisting to disk.
+      // (We still keep markdown in-memory for the editor.)
+      const showdown = (() => {
+        try {
+          // eslint-disable-next-line global-require
+          return require('showdown');
+        } catch {
+          return null;
+        }
+      })();
+      const markdownConverter = showdown
+        ? new showdown.Converter({
+            // best-effort parity with renderer conversion
+            tables: true,
+            strikethrough: true,
+            tasklists: true,
+          })
+        : null;
+
       notesArray.forEach(([noteId, note]) => {
         if (!note) {
           return;
@@ -294,10 +329,10 @@ const electronAPI = {
         const prevDirRel = prevNotePaths?.[noteId]?.dirRel;
         const prevDir = prevDirRel ? path.join(root, prevDirRel) : null;
 
-        const { mdFile: desiredMdFile, noteDir: desiredNoteDir } =
+        const { htmlFile: desiredHtmlFile, noteDir: desiredNoteDir } =
           getOrCreateNoteDir(root, foldersArray, notebooksArray, noteId, note);
         let finalNoteDir = desiredNoteDir;
-        let finalMdFile = desiredMdFile;
+        let finalHtmlFile = desiredHtmlFile;
 
         if (
           prevDir &&
@@ -310,17 +345,21 @@ const electronAPI = {
           cleanupEmptyDirs(path.dirname(prevDir), root);
           finalNoteDir = uniqueTarget;
           const newDirName = path.basename(uniqueTarget);
-          finalMdFile = path.join(uniqueTarget, `${newDirName}.md`);
+          finalHtmlFile = path.join(uniqueTarget, `${newDirName}.html`);
         }
 
         ensureDir(finalNoteDir);
         ensureDir(path.join(finalNoteDir, 'assets'));
-        ensureDir(path.dirname(finalMdFile));
-        fs.writeFileSync(finalMdFile, String(note.content || ''), 'utf8');
+        ensureDir(path.dirname(finalHtmlFile));
+        const markdown = String(note.content || '');
+        const html = markdownConverter
+          ? markdownConverter.makeHtml(markdown)
+          : markdown;
+        fs.writeFileSync(finalHtmlFile, html, 'utf8');
 
         nextNotePaths[noteId] = {
           dirRel: path.relative(root, finalNoteDir),
-          mdRel: path.relative(root, finalMdFile),
+          htmlRel: path.relative(root, finalHtmlFile),
         };
       });
 

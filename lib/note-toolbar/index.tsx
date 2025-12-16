@@ -36,14 +36,6 @@ type Props = DispatchProps & StateProps & React.HTMLProps<HTMLDivElement>;
 export class NoteToolbar extends Component<Props> {
   static displayName = 'NoteToolbar';
 
-  emitMarkdownCommand = (action: string) => {
-    window.dispatchEvent(
-      new CustomEvent('markdownCommand', {
-        detail: { action },
-      })
-    );
-  };
-
   render() {
     const { 'aria-hidden': ariaHidden, note } = this.props;
     return (
@@ -92,104 +84,6 @@ export class NoteToolbar extends Component<Props> {
               onClick={this.props.trashNote}
               title="Delete note"
             />
-          </div>
-          <div className="note-toolbar__md-tools" aria-label="Markdown tools">
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Heading 1"
-              onClick={() => this.emitMarkdownCommand('heading1')}
-            >
-              H1
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Heading 2"
-              onClick={() => this.emitMarkdownCommand('heading2')}
-            >
-              H2
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Bold"
-              onClick={() => this.emitMarkdownCommand('bold')}
-            >
-              B
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Italic"
-              onClick={() => this.emitMarkdownCommand('italic')}
-            >
-              I
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Strikethrough"
-              onClick={() => this.emitMarkdownCommand('strike')}
-            >
-              S
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Bulleted list"
-              onClick={() => this.emitMarkdownCommand('bullets')}
-            >
-              •
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Numbered list"
-              onClick={() => this.emitMarkdownCommand('numbers')}
-            >
-              1.
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Quote"
-              onClick={() => this.emitMarkdownCommand('quote')}
-            >
-              &gt;
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Inline code"
-              onClick={() => this.emitMarkdownCommand('code')}
-            >
-              {'</>'}
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Link"
-              onClick={() => this.emitMarkdownCommand('link')}
-            >
-              Link
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Indent"
-              onClick={() => this.emitMarkdownCommand('indent')}
-            >
-              ⇥
-            </button>
-            <button
-              type="button"
-              className="note-toolbar__md-button"
-              title="Outdent"
-              onClick={() => this.emitMarkdownCommand('outdent')}
-            >
-              ⇤
-            </button>
           </div>
           <div className="note-toolbar__button">
             <IconButton
