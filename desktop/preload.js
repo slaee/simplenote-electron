@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const sanitizeFilename = require('sanitize-filename');
@@ -528,6 +529,21 @@ const electronAPI = {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to resolve asset url:', e);
+      return null;
+    }
+  },
+  readClipboardImageDataUrl: () => {
+    try {
+      const img = clipboard.readImage();
+      if (!img || (typeof img.isEmpty === 'function' && img.isEmpty())) {
+        return null;
+      }
+      // Electron returns PNG data by default here.
+      const dataUrl = img.toDataURL();
+      return typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')
+        ? dataUrl
+        : null;
+    } catch (e) {
       return null;
     }
   },

@@ -307,11 +307,22 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           const dt = e.clipboardData;
           if (!dt) return;
 
+          const findImageFileFromDataTransfer = (): File | null => {
+            // Some Electron/Chromium clipboard implementations expose the pasted image
+            // via `clipboardData.files` rather than `clipboardData.items`.
+            const files = Array.from((dt.files as unknown as FileList) ?? []);
+            const imageFile = files.find(
+              (f) => f && f.type?.startsWith('image/')
+            );
+            return imageFile ?? null;
+          };
+
           // 1) Prefer binary images from clipboard items.
           const items = Array.from(dt.items ?? []);
           const imageItem = items.find((it) => it.type?.startsWith('image/'));
           if (imageItem) {
-            const file = imageItem.getAsFile();
+            const file =
+              imageItem.getAsFile() ?? findImageFileFromDataTransfer();
             if (!file) return;
             const mimeType = file.type || 'image/png';
             e.preventDefault();
@@ -320,6 +331,38 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             if (!saved) return;
             insertTextAtCursor(`![pasted-image](${saved.rel})`);
             return;
+          }
+
+          // 1.25) Fallback: binary image in `clipboardData.files` without an image item.
+          const fileOnlyImage = findImageFileFromDataTransfer();
+          if (fileOnlyImage) {
+            const mimeType = fileOnlyImage.type || 'image/png';
+            e.preventDefault();
+            const dataUrl = await readAsDataUrl(fileOnlyImage);
+            const saved = saveDataUrlToAssets(mimeType, dataUrl);
+            if (!saved) return;
+            insertTextAtCursor(`![pasted-image](${saved.rel})`);
+            return;
+          }
+
+          // 1.35) Electron-native clipboard fallback: some apps don't populate
+          // `clipboardData` with image bytes, but Electron can still read them.
+          const readClipboardImageDataUrl =
+            window.electron?.readClipboardImageDataUrl;
+          if (typeof readClipboardImageDataUrl === 'function') {
+            const nativeDataUrl = readClipboardImageDataUrl();
+            if (nativeDataUrl && nativeDataUrl.startsWith('data:image/')) {
+              e.preventDefault();
+              const mimeMatch = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(
+                nativeDataUrl
+              );
+              const mimeType = mimeMatch?.[1] ?? 'image/png';
+              const saved = saveDataUrlToAssets(mimeType, nativeDataUrl);
+              if (saved) {
+                insertTextAtCursor(`![pasted-image](${saved.rel})`);
+                return;
+              }
+            }
           }
 
           // 1.5) Handle HTML paste that contains <img> tags (common when copying from the web).

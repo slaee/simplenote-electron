@@ -30,6 +30,7 @@ type ElectronBridge = {
     args: any
   ) => Promise<{ rel: string; fileUrl: string } | null>;
   resolveNoteAssetFileUrl: (args: any) => string | null;
+  readClipboardImageDataUrl: () => string | null;
 };
 
 declare global {
