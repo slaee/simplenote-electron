@@ -141,6 +141,19 @@ body[data-theme='dark']
   color: rgba(255, 255, 255, 0.55) !important;
 }
 
+// Fallback: some Muya builds attach placeholder pseudo-content to the editable root
+// without `:empty` or without `data-placeholder`. Apply a safe override to pseudo
+// elements on contenteditable nodes only.
+body[data-theme='light'] .muya-editor-root [contenteditable='true']::before,
+body[data-theme='light'] .muya-editor-root [contenteditable='true']::after {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-theme='dark'] .muya-editor-root [contenteditable='true']::before,
+body[data-theme='dark'] .muya-editor-root [contenteditable='true']::after {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
 /* Safari requires that it be displayed absolute so that it takes the full height
 */
 .note-content-editor-shell {
