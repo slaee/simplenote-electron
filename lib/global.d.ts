@@ -1,9 +1,36 @@
 import { TKQItem, TracksAPI } from './analytics/types';
 import { compose } from 'redux';
 
-import { electronAPI } from './preload';
-
 import * as S from './state';
+
+declare module '*.css';
+declare module '*.scss';
+declare module '*.png';
+declare module '*.jpg';
+declare module '*.jpeg';
+declare module '*.gif';
+declare module '*.webp';
+declare module '*.svg';
+declare module '*.ttf';
+declare module '*.woff';
+declare module '*.woff2';
+declare module '*.eot';
+
+type ElectronBridge = {
+  isMac: boolean;
+  isLinux: boolean;
+  loadPersistentState: () => any;
+  savePersistentState: (data: any) => void;
+  loadAllRevisions: () => any;
+  saveNoteRevisions: (noteId: any, revisions: any) => void;
+  saveNoteAssetFromDataUrl: (
+    args: any
+  ) => { rel: string; fileUrl: string } | null;
+  saveNoteAssetFromUrl: (
+    args: any
+  ) => Promise<{ rel: string; fileUrl: string } | null>;
+  resolveNoteAssetFileUrl: (args: any) => string | null;
+};
 
 declare global {
   const __TEST__: boolean;
@@ -21,7 +48,7 @@ declare global {
   interface Window {
     __REDUX_DEVTOOLS_EXTENSION_COMPOSE__?: typeof compose;
     analyticsEnabled: boolean;
-    electron: typeof electronAPI;
+    electron: ElectronBridge;
     location: Location;
     testEvents: (string | [string, ...any[]])[];
     _tkq: TKQItem[] & { a: unknown };

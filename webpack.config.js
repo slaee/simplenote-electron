@@ -6,6 +6,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
 const fs = require('fs');
+const path = require('path');
 
 function readConfig() {
   const configPath = fs.existsSync('./config-local.json')
@@ -98,14 +99,24 @@ module.exports = () => {
           type: 'asset/resource',
         },
         {
+          test: /\.(woff2?|eot)$/,
+          type: 'asset/resource',
+        },
+        {
           test: /\.(png|jpe?g|gif|svg|webp)$/i,
           type: 'asset/resource',
         },
       ],
     },
     resolve: {
-      extensions: ['.js', '.jsx', '.json', '.scss', '.css', '.ts', '.tsx'],
+      // Prefer TS/JS sources over CSS when resolving directory "index" files.
+      // (Muya's source uses folders like `ui/baseFloat/index.ts` + `index.css`.)
+      extensions: ['.ts', '.tsx', '.js', '.jsx', '.json', '.scss', '.css'],
       modules: ['node_modules'],
+      alias: {
+        // Use the local vendored Muya source for full customization.
+        '@muyajs/core': path.resolve(__dirname, 'muya/packages/core/src'),
+      },
     },
     plugins: [
       new NodePolyfillPlugin({

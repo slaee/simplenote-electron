@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, remote } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const sanitizeFilename = require('sanitize-filename');
@@ -9,7 +9,10 @@ const META_FILE_NAME = 'store.json';
 const REVISIONS_FILE_NAME = 'revisions.json';
 
 const getNotesRoot = () => {
-  const documents = remote.app.getPath('documents');
+  const documents = ipcRenderer.sendSync('simplenote:getPath', 'documents');
+  if (!documents) {
+    throw new Error('Could not resolve documents path from main process');
+  }
   return path.join(documents, NOTES_ROOT_NAME);
 };
 
@@ -171,7 +174,7 @@ const validChannels = [
 
 const electronAPI = {
   confirmLogout: (changes) => {
-    const response = remote.dialog.showMessageBoxSync({
+    const response = ipcRenderer.sendSync('simplenote:showMessageBoxSync', {
       type: 'warning',
       buttons: [
         'Export Unsynced Notes',
@@ -198,7 +201,7 @@ const electronAPI = {
   },
   confirm: ({ title, message, detail } = {}) => {
     try {
-      const response = remote.dialog.showMessageBoxSync({
+      const response = ipcRenderer.sendSync('simplenote:showMessageBoxSync', {
         type: 'warning',
         buttons: ['Cancel', 'Delete'],
         defaultId: 0,
@@ -409,7 +412,14 @@ const electronAPI = {
       console.error('Failed to save revisions to filesystem:', e);
     }
   },
-  saveNoteAssetFromDataUrl: ({ noteId, note, mimeType, dataUrl, folders }) => {
+  saveNoteAssetFromDataUrl: ({
+    noteId,
+    note,
+    mimeType,
+    dataUrl,
+    folders,
+    notebooks,
+  }) => {
     try {
       const root = getNotesRoot();
       ensureDir(root);
@@ -417,7 +427,7 @@ const electronAPI = {
       const rawMeta = readJsonFile(metaPath) ?? {};
       const notePaths = rawMeta.notePaths ?? {};
       const existingDirRel = notePaths?.[noteId]?.dirRel;
-      const notebooksArray = rawMeta.notebooks ?? [];
+      const notebooksArray = notebooks ?? rawMeta.notebooks ?? [];
       const noteDir = existingDirRel
         ? path.join(root, existingDirRel)
         : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
@@ -439,11 +449,85 @@ const electronAPI = {
       const base64 = String(dataUrl).split(',')[1] || '';
       fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
 
-      // Return a markdown-relative path from the note md file
-      return `assets/${fileName}`;
+      const rel = `assets/${fileName}`;
+      const fileUrl = `file://${filePath}`;
+      return { rel, fileUrl };
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to save note asset:', e);
+      return null;
+    }
+  },
+  saveNoteAssetFromUrl: async ({ noteId, note, url, folders, notebooks }) => {
+    try {
+      const fetch = require('electron-fetch').default;
+      const root = getNotesRoot();
+      ensureDir(root);
+      const metaPath = path.join(root, META_DIR_NAME, META_FILE_NAME);
+      const rawMeta = readJsonFile(metaPath) ?? {};
+      const notePaths = rawMeta.notePaths ?? {};
+      const existingDirRel = notePaths?.[noteId]?.dirRel;
+      const notebooksArray = notebooks ?? rawMeta.notebooks ?? [];
+      const noteDir = existingDirRel
+        ? path.join(root, existingDirRel)
+        : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
+            .noteDir;
+      const assetsDir = path.join(noteDir, 'assets');
+      ensureDir(assetsDir);
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        return null;
+      }
+
+      const contentType =
+        (res.headers && res.headers.get && res.headers.get('content-type')) ||
+        '';
+      const mimeType = String(contentType).split(';')[0].trim();
+
+      const ext =
+        mimeType === 'image/png'
+          ? 'png'
+          : mimeType === 'image/jpeg'
+            ? 'jpg'
+            : mimeType === 'image/gif'
+              ? 'gif'
+              : mimeType === 'image/webp'
+                ? 'webp'
+                : 'png';
+
+      const fileName = `pasted-${Date.now()}.${ext}`;
+      const filePath = path.join(assetsDir, fileName);
+
+      const buffer = await res.buffer();
+      fs.writeFileSync(filePath, buffer);
+
+      const rel = `assets/${fileName}`;
+      const fileUrl = `file://${filePath}`;
+      return { rel, fileUrl };
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save note asset from url:', e);
+      return null;
+    }
+  },
+  resolveNoteAssetFileUrl: ({ noteId, note, folders, notebooks, rel }) => {
+    try {
+      const root = getNotesRoot();
+      const metaPath = path.join(root, META_DIR_NAME, META_FILE_NAME);
+      const rawMeta = readJsonFile(metaPath) ?? {};
+      const notePaths = rawMeta.notePaths ?? {};
+      const existingDirRel = notePaths?.[noteId]?.dirRel;
+      const notebooksArray = notebooks ?? rawMeta.notebooks ?? [];
+      const noteDir = existingDirRel
+        ? path.join(root, existingDirRel)
+        : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
+            .noteDir;
+      const abs = path.join(noteDir, String(rel || ''));
+      return `file://${abs}`;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to resolve asset url:', e);
       return null;
     }
   },

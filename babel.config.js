@@ -7,7 +7,6 @@ module.exports = function (api) {
       {
         corejs: '3',
         include: [
-          'transform-class-properties',
           'transform-object-rest-spread',
           'transform-optional-chaining',
         ],
@@ -21,6 +20,14 @@ module.exports = function (api) {
     '@babel/typescript',
   ];
   const plugins = [
+    // Muya source uses legacy decorators heavily.
+    ['@babel/plugin-proposal-decorators', { legacy: true }],
+    // Keep class fields compatible with legacy decorators semantics.
+    ['@babel/plugin-transform-class-properties', { loose: true }],
+    // Keep "loose" setting consistent across class fields + private features to avoid
+    // massive warning spam when compiling Muya source.
+    ['@babel/plugin-transform-private-methods', { loose: true }],
+    ['@babel/plugin-transform-private-property-in-object', { loose: true }],
     '@babel/plugin-syntax-dynamic-import',
     '@babel/plugin-transform-runtime',
   ];

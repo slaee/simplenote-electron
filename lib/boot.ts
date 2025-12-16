@@ -14,8 +14,13 @@ import { makeStore } from './state';
 import isDevConfig from './utils/is-dev-config';
 
 import '../scss/style.scss';
-// Muya package currently ships `core.css` (not `style.css`) in our build.
-import '@muyajs/core/lib/core.css';
+// Muya styles (using local `muya/` source via webpack alias).
+// Import the source CSS entrypoints directly (the old `@muyajs/core/lib/*.css`
+// paths only exist in the published build artifacts).
+import '@muyajs/core/assets/styles/blockSyntax.css';
+import '@muyajs/core/assets/styles/index.css';
+import '@muyajs/core/assets/styles/inlineSyntax.css';
+import '@muyajs/core/assets/styles/prismjs/light.theme.css';
 
 const ensureNormalization = () =>
   !('normalize' in String.prototype)

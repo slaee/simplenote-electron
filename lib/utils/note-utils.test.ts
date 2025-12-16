@@ -28,6 +28,16 @@ describe('noteTitleAndPreview', () => {
     });
   });
 
+  it('should use the first non-empty line as the title', () => {
+    note.content = '\n\n   \nMy title\nThe preview';
+    note.systemTags = [];
+    const result = noteTitleAndPreview(note);
+    expect(result).toEqual({
+      title: 'My title',
+      preview: 'The preview',
+    });
+  });
+
   it('should return the title and preview with Markdown removed when note is Markdown', () => {
     note.content = '# My title\nThe [preview](https://test.com)';
     const result = noteTitleAndPreview(note);

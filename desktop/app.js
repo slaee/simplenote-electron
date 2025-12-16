@@ -4,6 +4,7 @@ const {
   app,
   BrowserWindow,
   ipcMain,
+  dialog,
   shell,
   Menu,
   session,
@@ -41,6 +42,31 @@ module.exports = function main() {
   if (process.platform === 'linux') {
     app.disableHardwareAcceleration();
   }
+
+  // ---------------------------------------------------------------------------
+  // IPC helpers for renderer/preload (replaces removed `remote` module).
+  // ---------------------------------------------------------------------------
+  ipcMain.on('simplenote:getPath', (event, name) => {
+    try {
+      // Restrict to the one path we need for note persistence.
+      if (name !== 'documents') {
+        event.returnValue = null;
+        return;
+      }
+      event.returnValue = app.getPath('documents');
+    } catch {
+      event.returnValue = null;
+    }
+  });
+
+  ipcMain.on('simplenote:showMessageBoxSync', (event, options) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      event.returnValue = dialog.showMessageBoxSync(win, options || {});
+    } catch {
+      event.returnValue = 0;
+    }
+  });
 
   app.on('will-finish-launching', function () {
     setTimeout(updater.ping.bind(updater), config.updater.delay);

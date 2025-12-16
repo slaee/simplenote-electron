@@ -15,6 +15,7 @@ type OwnProps = {
 
 type StateProps = {
   folders: Map<T.FolderId, T.Folder>;
+  notebooks: Map<T.NotebookId, T.Notebook>;
   isFocusMode: boolean;
   keyboardShortcuts: boolean;
   lineLength: T.LineLength;
@@ -112,6 +113,9 @@ class NoteContentEditor extends Component<Props> {
           ref={this.muyaRef}
           noteId={this.props.noteId as unknown as string}
           value={this.props.note?.content ?? ''}
+          note={this.props.note}
+          folders={Array.from(this.props.folders)}
+          notebooks={Array.from(this.props.notebooks)}
           onChange={this.onChange}
         />
       </div>
@@ -121,6 +125,7 @@ class NoteContentEditor extends Component<Props> {
 
 const mapStateToProps: S.MapState<StateProps> = (state) => ({
   folders: state.data.folders,
+  notebooks: state.data.notebooks,
   isFocusMode: state.settings.focusModeEnabled,
   keyboardShortcuts: state.settings.keyboardShortcuts,
   lineLength: state.settings.lineLength,

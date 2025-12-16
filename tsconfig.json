@@ -10,7 +10,11 @@
     "skipLibCheck": true,
     "strict": true,
     "isolatedModules": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "@muyajs/core": ["muya/packages/core/src/index.ts"],
+      "@muyajs/core/*": ["muya/packages/core/src/*"]
+    }
   },
   "include": ["lib/**/*"]
 }

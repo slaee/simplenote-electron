@@ -29,13 +29,18 @@ const removeMarkdownWithFix = (inputString) => {
 };
 
 export const getTitle = (content) => {
-  const titlePattern = new RegExp(`\\s*([^\n]{1,${maxTitleChars}})`, 'g');
-  const titleMatch = titlePattern.exec(content);
-  if (!titleMatch) {
+  if (!content) {
     return 'New Note…';
   }
-  const [, title] = titleMatch;
-  return title;
+
+  // Title is the first non-empty line, trimmed.
+  // This is intentionally simple and matches the requested behavior.
+  const lines = String(content).split(/\r?\n/);
+  const firstNonEmpty = lines.find((line) => line.trim().length > 0);
+  if (!firstNonEmpty) {
+    return 'New Note…';
+  }
+  return firstNonEmpty.trim().slice(0, maxTitleChars);
 };
 
 /**
@@ -85,25 +90,17 @@ const getPreview = (content: string, searchQuery?: string) => {
   }
 
   // implicit else: if the query didn't match, fall back to first three lines
-  let index = content.indexOf('\n');
+  const allLines = String(content).split(/\r?\n/);
+  const titleLine = getTitle(content);
+  const titleIndex = allLines.findIndex((l) => l.trim() === titleLine);
 
-  if (index === -1) {
-    return '';
-  }
-
-  while (index > -1 && lines < 3) {
-    const nextNewline = content.indexOf('\n', index);
-    if (-1 === nextNewline) {
-      return preview + content.slice(index).trim();
-    }
-
-    const nextLine = content.slice(index, nextNewline).trim();
-    if (nextLine) {
-      preview += nextLine + '\n';
-      lines++;
-    }
-
-    index = nextNewline + 1;
+  // Build preview from up to 3 non-empty lines after the title line.
+  for (let i = Math.max(0, titleIndex + 1); i < allLines.length; i++) {
+    if (lines >= 3) break;
+    const line = allLines[i].trim();
+    if (!line) continue;
+    preview += line + '\n';
+    lines++;
   }
 
   return preview.trim();
