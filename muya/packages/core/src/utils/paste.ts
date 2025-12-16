@@ -129,6 +129,9 @@ export function getCopyTextType(html: string, text: string, pasteType: string) {
     return 'text';
   };
 
-  if (pasteType === 'normal') return html && text ? 'html' : getTextType(text);
+  // Some clipboard providers (e.g. copying images from browsers/apps) populate only
+  // `text/html` and leave `text/plain` empty. In that case we still want to treat
+  // the paste as HTML so the downstream HTML->Markdown pipeline can run.
+  if (pasteType === 'normal') return html ? 'html' : getTextType(text);
   else return getTextType(text);
 }

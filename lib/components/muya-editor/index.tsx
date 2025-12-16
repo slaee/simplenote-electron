@@ -236,9 +236,7 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         // Prefer execCommand because it triggers the same input pipeline Muya listens to.
         // (Deprecated but still widely supported in Electron.)
         try {
-          // eslint-disable-next-line deprecation/deprecation
           if (document.queryCommandSupported?.('insertText')) {
-            // eslint-disable-next-line deprecation/deprecation
             document.execCommand('insertText', false, text);
             return;
           }
@@ -293,6 +291,12 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         })) as { rel: string; fileUrl: string } | null;
       };
 
+      const takeOverPasteEvent = (e: ClipboardEvent) => {
+        e.preventDefault();
+        // Prevent Muya's own paste handler from running after we insert content.
+        e.stopPropagation();
+      };
+
       const onPasteCapture = async (e: ClipboardEvent) => {
         try {
           // Ignore pastes outside this editor (we attach to document capture below).
@@ -325,11 +329,15 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
               imageItem.getAsFile() ?? findImageFileFromDataTransfer();
             if (!file) return;
             const mimeType = file.type || 'image/png';
-            e.preventDefault();
             const dataUrl = await readAsDataUrl(file);
             const saved = saveDataUrlToAssets(mimeType, dataUrl);
-            if (!saved) return;
-            insertTextAtCursor(`![pasted-image](${saved.rel})`);
+            takeOverPasteEvent(e);
+            if (saved?.fileUrl) {
+              insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
+            } else {
+              // Best-effort fallback so the paste isn't lost.
+              insertTextAtCursor(`![pasted-image](${dataUrl})`);
+            }
             return;
           }
 
@@ -337,11 +345,14 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           const fileOnlyImage = findImageFileFromDataTransfer();
           if (fileOnlyImage) {
             const mimeType = fileOnlyImage.type || 'image/png';
-            e.preventDefault();
             const dataUrl = await readAsDataUrl(fileOnlyImage);
             const saved = saveDataUrlToAssets(mimeType, dataUrl);
-            if (!saved) return;
-            insertTextAtCursor(`![pasted-image](${saved.rel})`);
+            takeOverPasteEvent(e);
+            if (saved?.fileUrl) {
+              insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
+            } else {
+              insertTextAtCursor(`![pasted-image](${dataUrl})`);
+            }
             return;
           }
 
@@ -352,16 +363,18 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           if (typeof readClipboardImageDataUrl === 'function') {
             const nativeDataUrl = readClipboardImageDataUrl();
             if (nativeDataUrl && nativeDataUrl.startsWith('data:image/')) {
-              e.preventDefault();
               const mimeMatch = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(
                 nativeDataUrl
               );
               const mimeType = mimeMatch?.[1] ?? 'image/png';
               const saved = saveDataUrlToAssets(mimeType, nativeDataUrl);
-              if (saved) {
-                insertTextAtCursor(`![pasted-image](${saved.rel})`);
-                return;
+              takeOverPasteEvent(e);
+              if (saved?.fileUrl) {
+                insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
+              } else {
+                insertTextAtCursor(`![pasted-image](${nativeDataUrl})`);
               }
+              return;
             }
           }
 
@@ -371,8 +384,6 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const imgs = Array.from(doc.querySelectorAll('img'));
             if (imgs.length > 0) {
-              e.preventDefault();
-
               const markdownParts: string[] = [];
               for (const img of imgs) {
                 const src = (img.getAttribute('src') ?? '').trim();
@@ -393,11 +404,13 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
                     );
                   const mimeType = mimeMatch?.[1] ?? 'image/png';
                   const saved = saveDataUrlToAssets(mimeType, normalizedSrc);
-                  if (saved) {
-                    const alt = (img.getAttribute('alt') ?? 'pasted-image')
-                      .trim()
-                      .slice(0, 64);
-                    markdownParts.push(`![${alt}](${saved.rel})`);
+                  const alt = (img.getAttribute('alt') ?? 'pasted-image')
+                    .trim()
+                    .slice(0, 64);
+                  if (saved?.fileUrl) {
+                    markdownParts.push(`![${alt}](${saved.fileUrl})`);
+                  } else {
+                    markdownParts.push(`![${alt}](${normalizedSrc})`);
                   }
                   continue;
                 }
@@ -405,17 +418,20 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
                 // remote URL
                 if (isProbablyUrl(src)) {
                   const saved = await saveUrlToAssets(src);
-                  if (saved) {
-                    const alt = (img.getAttribute('alt') ?? 'pasted-image')
-                      .trim()
-                      .slice(0, 64);
-                    markdownParts.push(`![${alt}](${saved.rel})`);
+                  const alt = (img.getAttribute('alt') ?? 'pasted-image')
+                    .trim()
+                    .slice(0, 64);
+                  if (saved?.fileUrl) {
+                    markdownParts.push(`![${alt}](${saved.fileUrl})`);
+                  } else {
+                    markdownParts.push(`![${alt}](${src})`);
                   }
                   continue;
                 }
               }
 
               if (markdownParts.length > 0) {
+                takeOverPasteEvent(e);
                 // Insert each image on its own line for readability and correct parsing.
                 insertTextAtCursor(markdownParts.join('\n\n'));
                 return;
@@ -435,8 +451,10 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             // try to store as asset and insert markdown image link
             const saved = await saveUrlToAssets(urlOnly);
             if (saved) {
-              e.preventDefault();
-              insertTextAtCursor(`![pasted-image](${saved.rel})`);
+              takeOverPasteEvent(e);
+              insertTextAtCursor(
+                `![pasted-image](${saved.fileUrl || saved.rel})`
+              );
               return;
             }
           }
@@ -444,7 +462,7 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           const matches = text.match(dataUrlRe);
           if (!matches || matches.length === 0) return;
 
-          e.preventDefault();
+          takeOverPasteEvent(e);
 
           const originalTrimmed = text.trim();
           let nextText = text;
@@ -462,13 +480,17 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             const mimeType = mimeMatch?.[1] ?? 'image/png';
             const saved = saveDataUrlToAssets(mimeType, normalized);
             if (!saved) continue;
-            nextText = nextText.replace(dataUrl, saved.rel);
+            nextText = nextText.replace(dataUrl, saved.fileUrl || saved.rel);
           }
 
           // If user pasted a raw data URL string, convert into a markdown image link.
           const nextTrimmed = nextText.trim();
           const pastedOnlyDataUrl = originalTrimmed.startsWith('data:image/');
-          if (pastedOnlyDataUrl && nextTrimmed.startsWith('assets/')) {
+          if (
+            pastedOnlyDataUrl &&
+            (nextTrimmed.startsWith('assets/') ||
+              nextTrimmed.startsWith('file://'))
+          ) {
             insertTextAtCursor(`![pasted-image](${nextTrimmed})`);
             return;
           }
@@ -494,7 +516,6 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         muyaRef.current = null;
         muyaDomRef.current = null;
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [noteId]);
 
     // Keep Muya in sync if Redux updates the note content externally.

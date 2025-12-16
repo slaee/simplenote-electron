@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const { clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const sanitizeFilename = require('sanitize-filename');
 
 const NOTES_ROOT_NAME = 'SimpleNotes';
@@ -433,6 +434,24 @@ const electronAPI = {
         ? path.join(root, existingDirRel)
         : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
             .noteDir;
+
+      // Ensure the note's dirRel is persisted as soon as we create/resolve it so
+      // subsequent asset URL resolutions don't depend on a later full persistence pass.
+      if (!existingDirRel) {
+        try {
+          const nextNotePaths = {
+            ...notePaths,
+            [noteId]: {
+              ...(notePaths?.[noteId] ?? {}),
+              dirRel: path.relative(root, noteDir),
+            },
+          };
+          writeJsonFile(metaPath, { ...rawMeta, notePaths: nextNotePaths });
+        } catch {
+          // best-effort
+        }
+      }
+
       const assetsDir = path.join(noteDir, 'assets');
       ensureDir(assetsDir);
 
@@ -451,7 +470,7 @@ const electronAPI = {
       fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
 
       const rel = `assets/${fileName}`;
-      const fileUrl = `file://${filePath}`;
+      const fileUrl = pathToFileURL(filePath).toString();
       return { rel, fileUrl };
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -473,6 +492,21 @@ const electronAPI = {
         ? path.join(root, existingDirRel)
         : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
             .noteDir;
+
+      if (!existingDirRel) {
+        try {
+          const nextNotePaths = {
+            ...notePaths,
+            [noteId]: {
+              ...(notePaths?.[noteId] ?? {}),
+              dirRel: path.relative(root, noteDir),
+            },
+          };
+          writeJsonFile(metaPath, { ...rawMeta, notePaths: nextNotePaths });
+        } catch {
+          // best-effort
+        }
+      }
       const assetsDir = path.join(noteDir, 'assets');
       ensureDir(assetsDir);
 
@@ -504,7 +538,7 @@ const electronAPI = {
       fs.writeFileSync(filePath, buffer);
 
       const rel = `assets/${fileName}`;
-      const fileUrl = `file://${filePath}`;
+      const fileUrl = pathToFileURL(filePath).toString();
       return { rel, fileUrl };
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -524,8 +558,23 @@ const electronAPI = {
         ? path.join(root, existingDirRel)
         : getOrCreateNoteDir(root, folders ?? [], notebooksArray, noteId, note)
             .noteDir;
+
+      if (!existingDirRel) {
+        try {
+          const nextNotePaths = {
+            ...notePaths,
+            [noteId]: {
+              ...(notePaths?.[noteId] ?? {}),
+              dirRel: path.relative(root, noteDir),
+            },
+          };
+          writeJsonFile(metaPath, { ...rawMeta, notePaths: nextNotePaths });
+        } catch {
+          // best-effort
+        }
+      }
       const abs = path.join(noteDir, String(rel || ''));
-      return `file://${abs}`;
+      return pathToFileURL(abs).toString();
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Failed to resolve asset url:', e);

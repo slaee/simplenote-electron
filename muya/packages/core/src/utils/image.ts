@@ -26,6 +26,13 @@ export function getImageInfo(image: HTMLElement): IImageInfo {
 }
 
 export function getImageSrc(src: string) {
+  // Keep already-qualified URLs intact (most importantly `file://` for Electron).
+  if (typeof src === 'string' && /^file:\/\//i.test(src)) {
+    return {
+      isUnknownType: false,
+      src,
+    };
+  }
   const EXT_REG = /\.(jpeg|jpg|png|gif|svg|webp)(?=\?|$)/i;
   // http[s] (domain or IPv4 or localhost or IPv6) [port] /not-white-space
   const URL_REG =
