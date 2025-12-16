@@ -256,19 +256,19 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         sel.addRange(range);
       };
 
-      const saveDataUrlToAssets = (mimeType: string, dataUrl: string) => {
+      const saveDataUrlToAssets = async (mimeType: string, dataUrl: string) => {
         const saveFn = window.electron?.saveNoteAssetFromDataUrl;
         if (typeof saveFn !== 'function') {
           return null;
         }
-        return saveFn({
+        return (await saveFn({
           noteId,
           note,
           folders,
           notebooks,
           mimeType,
           dataUrl,
-        }) as { rel: string; fileUrl: string } | null;
+        })) as { rel: string; fileUrl: string } | null;
       };
 
       // Accept whitespace/newlines inside base64 (common when copying from some sources).
@@ -291,7 +291,14 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         })) as { rel: string; fileUrl: string } | null;
       };
 
+      // Track handled paste events without mutating the event object (some
+      // Chromium/Electron builds treat Event objects as non-extensible).
+      const handledPasteEvents = new WeakSet<Event>();
+
       const takeOverPasteEvent = (e: ClipboardEvent) => {
+        // Guard: ensure we never process the same paste event twice.
+        if (handledPasteEvents.has(e)) return;
+        handledPasteEvents.add(e);
         e.preventDefault();
         // Prevent Muya's own paste handler from running after we insert content.
         e.stopPropagation();
@@ -310,6 +317,8 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           }
           const dt = e.clipboardData;
           if (!dt) return;
+          const canSaveAssets =
+            typeof window.electron?.saveNoteAssetFromDataUrl === 'function';
 
           const findImageFileFromDataTransfer = (): File | null => {
             // Some Electron/Chromium clipboard implementations expose the pasted image
@@ -329,14 +338,17 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
               imageItem.getAsFile() ?? findImageFileFromDataTransfer();
             if (!file) return;
             const mimeType = file.type || 'image/png';
-            const dataUrl = await readAsDataUrl(file);
-            const saved = saveDataUrlToAssets(mimeType, dataUrl);
+            if (!canSaveAssets) return;
+            // Take over synchronously before any async work so Muya never sees this paste.
             takeOverPasteEvent(e);
+            const dataUrl = await readAsDataUrl(file);
+            const saved = await saveDataUrlToAssets(mimeType, dataUrl);
             if (saved?.fileUrl) {
               insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
             } else {
-              // Best-effort fallback so the paste isn't lost.
-              insertTextAtCursor(`![pasted-image](${dataUrl})`);
+              // In Electron, never store huge base64 in the note (it freezes and deforms titles).
+              // If saving fails, keep content small and visible.
+              insertTextAtCursor('[pasted image could not be saved]');
             }
             return;
           }
@@ -345,13 +357,14 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           const fileOnlyImage = findImageFileFromDataTransfer();
           if (fileOnlyImage) {
             const mimeType = fileOnlyImage.type || 'image/png';
-            const dataUrl = await readAsDataUrl(fileOnlyImage);
-            const saved = saveDataUrlToAssets(mimeType, dataUrl);
+            if (!canSaveAssets) return;
             takeOverPasteEvent(e);
+            const dataUrl = await readAsDataUrl(fileOnlyImage);
+            const saved = await saveDataUrlToAssets(mimeType, dataUrl);
             if (saved?.fileUrl) {
               insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
             } else {
-              insertTextAtCursor(`![pasted-image](${dataUrl})`);
+              insertTextAtCursor('[pasted image could not be saved]');
             }
             return;
           }
@@ -363,16 +376,17 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           if (typeof readClipboardImageDataUrl === 'function') {
             const nativeDataUrl = readClipboardImageDataUrl();
             if (nativeDataUrl && nativeDataUrl.startsWith('data:image/')) {
+              if (!canSaveAssets) return;
+              takeOverPasteEvent(e);
               const mimeMatch = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(
                 nativeDataUrl
               );
               const mimeType = mimeMatch?.[1] ?? 'image/png';
-              const saved = saveDataUrlToAssets(mimeType, nativeDataUrl);
-              takeOverPasteEvent(e);
+              const saved = await saveDataUrlToAssets(mimeType, nativeDataUrl);
               if (saved?.fileUrl) {
                 insertTextAtCursor(`![pasted-image](${saved.fileUrl})`);
               } else {
-                insertTextAtCursor(`![pasted-image](${nativeDataUrl})`);
+                insertTextAtCursor('[pasted image could not be saved]');
               }
               return;
             }
@@ -384,6 +398,20 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const imgs = Array.from(doc.querySelectorAll('img'));
             if (imgs.length > 0) {
+              // Decide synchronously whether we can handle at least one image.
+              // If so, take over before any async I/O so Muya doesn't also paste.
+              const hasSupportedImg = imgs.some((img) => {
+                const src = (img.getAttribute('src') ?? '').trim();
+                return (
+                  src.startsWith('data:image/') || (src && isProbablyUrl(src))
+                );
+              });
+              if (!hasSupportedImg) {
+                // Nothing we can handle; let Muya/default behavior proceed.
+                return;
+              }
+
+              takeOverPasteEvent(e);
               const markdownParts: string[] = [];
               for (const img of imgs) {
                 const src = (img.getAttribute('src') ?? '').trim();
@@ -403,14 +431,19 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
                       normalizedSrc
                     );
                   const mimeType = mimeMatch?.[1] ?? 'image/png';
-                  const saved = saveDataUrlToAssets(mimeType, normalizedSrc);
+                  if (!canSaveAssets) continue;
+                  const saved = await saveDataUrlToAssets(
+                    mimeType,
+                    normalizedSrc
+                  );
                   const alt = (img.getAttribute('alt') ?? 'pasted-image')
                     .trim()
                     .slice(0, 64);
                   if (saved?.fileUrl) {
                     markdownParts.push(`![${alt}](${saved.fileUrl})`);
                   } else {
-                    markdownParts.push(`![${alt}](${normalizedSrc})`);
+                    // Avoid storing base64 in Electron notes.
+                    markdownParts.push(`[${alt}]`);
                   }
                   continue;
                 }
@@ -431,7 +464,6 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
               }
 
               if (markdownParts.length > 0) {
-                takeOverPasteEvent(e);
                 // Insert each image on its own line for readability and correct parsing.
                 insertTextAtCursor(markdownParts.join('\n\n'));
                 return;
@@ -462,6 +494,7 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           const matches = text.match(dataUrlRe);
           if (!matches || matches.length === 0) return;
 
+          // Take over synchronously before we start rewriting and inserting.
           takeOverPasteEvent(e);
 
           const originalTrimmed = text.trim();
@@ -478,7 +511,8 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
               normalized
             );
             const mimeType = mimeMatch?.[1] ?? 'image/png';
-            const saved = saveDataUrlToAssets(mimeType, normalized);
+            if (!canSaveAssets) continue;
+            const saved = await saveDataUrlToAssets(mimeType, normalized);
             if (!saved) continue;
             nextText = nextText.replace(dataUrl, saved.fileUrl || saved.rel);
           }

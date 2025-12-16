@@ -14,6 +14,35 @@ export const maxPreviewChars = 200;
 
 const isLowSurrogate = (c: number) => 0xdc00 <= c && c <= 0xdfff;
 
+const IMAGE_LINE_RE = /^!\[([^\]]*)\]\(([^)]+)\)/;
+const IMAGE_LINE_ONLY_RE = /^\s*!\[[^\]]*\]\([^)]+\)\s*$/;
+const HEADING_RE = /^\s*#{1,6}\s+(.*)$/;
+
+const normalizeTitleCandidate = (line: string): string => {
+  const trimmed = String(line ?? '').trim();
+  const headingMatch = HEADING_RE.exec(trimmed);
+  if (headingMatch && headingMatch[1]) {
+    return headingMatch[1].trim();
+  }
+  return trimmed;
+};
+
+const findTitleLineIndex = (content: string): number => {
+  const lines = String(content ?? '').split(/\r?\n/);
+  let firstImageIdx: number | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = String(lines[i]).trim();
+    if (!trimmed) continue;
+    const imgMatch = IMAGE_LINE_RE.exec(trimmed);
+    if (imgMatch) {
+      if (firstImageIdx === null) firstImageIdx = i;
+      continue;
+    }
+    return i;
+  }
+  return firstImageIdx ?? -1;
+};
+
 /**
  * Returns a string with markdown stripped
  *
@@ -33,14 +62,38 @@ export const getTitle = (content) => {
     return 'New Note…';
   }
 
-  // Title is the first non-empty line, trimmed.
-  // This is intentionally simple and matches the requested behavior.
   const lines = String(content).split(/\r?\n/);
-  const firstNonEmpty = lines.find((line) => line.trim().length > 0);
-  if (!firstNonEmpty) {
-    return 'New Note…';
+
+  // Title is the first meaningful (non-empty, non-image-only) line.
+  // If the first content is an image, prefer the next text line; otherwise fall back
+  // to the image alt text.
+  let pendingImageAlt: string | null = null;
+  for (const line of lines) {
+    const trimmed = String(line).trim();
+    if (!trimmed) continue;
+
+    const headingMatch = HEADING_RE.exec(trimmed);
+    if (headingMatch && headingMatch[1]) {
+      const title = headingMatch[1].trim();
+      if (title) return title.slice(0, maxTitleChars);
+    }
+
+    const imgMatch = IMAGE_LINE_RE.exec(trimmed);
+    if (imgMatch) {
+      const alt = (imgMatch[1] ?? '').trim();
+      if (!pendingImageAlt && alt) pendingImageAlt = alt;
+      // Keep looking for real text.
+      continue;
+    }
+
+    return trimmed.slice(0, maxTitleChars);
   }
-  return firstNonEmpty.trim().slice(0, maxTitleChars);
+
+  if (pendingImageAlt) {
+    return pendingImageAlt.slice(0, maxTitleChars);
+  }
+
+  return 'New Note…';
 };
 
 /**
@@ -75,10 +128,14 @@ const getPreview = (content: string, searchQuery?: string) => {
       const matches = regExp.exec(content);
       if (matches && matches.length > 0) {
         // Remove blank lines and note title from the search note preview
+        const title = getTitle(content);
         preview = matches[0]
           .split('\n')
           .filter(
-            (line) => line !== '\r' && line !== '' && line !== getTitle(content)
+            (line) =>
+              line !== '\r' &&
+              line !== '' &&
+              normalizeTitleCandidate(line) !== title
           )
           .join('\n');
         // don't return half of a surrogate pair
@@ -91,14 +148,14 @@ const getPreview = (content: string, searchQuery?: string) => {
 
   // implicit else: if the query didn't match, fall back to first three lines
   const allLines = String(content).split(/\r?\n/);
-  const titleLine = getTitle(content);
-  const titleIndex = allLines.findIndex((l) => l.trim() === titleLine);
+  const titleIndex = findTitleLineIndex(content);
 
   // Build preview from up to 3 non-empty lines after the title line.
   for (let i = Math.max(0, titleIndex + 1); i < allLines.length; i++) {
     if (lines >= 3) break;
     const line = allLines[i].trim();
     if (!line) continue;
+    if (IMAGE_LINE_ONLY_RE.test(line)) continue;
     preview += line + '\n';
     lines++;
   }

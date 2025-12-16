@@ -1,5 +1,9 @@
-const { contextBridge, ipcRenderer } = require('electron');
-const { clipboard } = require('electron');
+const {
+  contextBridge,
+  ipcRenderer,
+  clipboard,
+  nativeImage,
+} = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -414,7 +418,7 @@ const electronAPI = {
       console.error('Failed to save revisions to filesystem:', e);
     }
   },
-  saveNoteAssetFromDataUrl: ({
+  saveNoteAssetFromDataUrl: async ({
     noteId,
     note,
     mimeType,
@@ -455,26 +459,46 @@ const electronAPI = {
       const assetsDir = path.join(noteDir, 'assets');
       ensureDir(assetsDir);
 
-      const ext =
-        mimeType === 'image/png'
-          ? 'png'
-          : mimeType === 'image/jpeg'
-            ? 'jpg'
-            : mimeType === 'image/webp'
-              ? 'webp'
-              : 'png';
+      // Normalize whitespace in base64 payload (some clipboard sources insert newlines).
+      const normalizedDataUrl = (() => {
+        const s = String(dataUrl || '');
+        if (!s.startsWith('data:image/')) return s;
+        const commaIdx = s.indexOf(',');
+        if (commaIdx < 0) return s;
+        return (
+          s.slice(0, commaIdx + 1) + s.slice(commaIdx + 1).replace(/\s+/g, '')
+        );
+      })();
+
+      // Decode using Electron-native image pipeline (more robust than manual base64 parsing).
+      const img = nativeImage.createFromDataURL(normalizedDataUrl);
+      if (!img || (typeof img.isEmpty === 'function' && img.isEmpty())) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to save note asset: nativeImage is empty', {
+          noteId,
+          mimeType,
+        });
+        return null;
+      }
+
+      // Choose output format: keep JPEGs as JPEG; everything else as PNG.
+      const outputIsJpeg = mimeType === 'image/jpeg';
+      const ext = outputIsJpeg ? 'jpg' : 'png';
+      const buffer = outputIsJpeg ? img.toJPEG(90) : img.toPNG();
 
       const fileName = `pasted-${Date.now()}.${ext}`;
       const filePath = path.join(assetsDir, fileName);
-      const base64 = String(dataUrl).split(',')[1] || '';
-      fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+      await fs.promises.writeFile(filePath, buffer);
 
       const rel = `assets/${fileName}`;
       const fileUrl = pathToFileURL(filePath).toString();
       return { rel, fileUrl };
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.error('Failed to save note asset:', e);
+      console.error('Failed to save note asset:', e, {
+        noteId,
+        mimeType,
+      });
       return null;
     }
   },
@@ -535,7 +559,7 @@ const electronAPI = {
       const filePath = path.join(assetsDir, fileName);
 
       const buffer = await res.buffer();
-      fs.writeFileSync(filePath, buffer);
+      await fs.promises.writeFile(filePath, buffer);
 
       const rel = `assets/${fileName}`;
       const fileUrl = pathToFileURL(filePath).toString();
