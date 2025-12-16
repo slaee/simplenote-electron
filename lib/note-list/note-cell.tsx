@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import PublishIcon from '../icons/published-small';
 import SmallPinnedIcon from '../icons/pinned-small';
 import SmallSyncIcon from '../icons/sync-small';
+import FileSmallIcon from '../icons/file-small';
 import { decorateWith, makeFilterDecorator } from './decorators';
 import { getTerms } from '../utils/filter-notes';
 import { noteTitleAndPreview } from '../utils/note-utils';
@@ -27,6 +28,8 @@ type StateProps = {
   isOffline: boolean;
   isOpened: boolean;
   lastUpdated: number;
+  folders: any[];
+  notebooks: any[];
   note?: T.Note;
   searchQuery: string;
 };
@@ -72,6 +75,8 @@ export class NoteCell extends Component<Props> {
       isOffline,
       isOpened,
       lastUpdated,
+      folders,
+      notebooks,
       noteId,
       note,
       openNote,
@@ -103,6 +108,61 @@ export class NoteCell extends Component<Props> {
 
     const decorators = getTerms(searchQuery).map(makeFilterDecorator);
 
+    // If the 2nd or 3rd editor line is an image, show a thumbnail indicator in the excerpt.
+    // Skip this when searching so contextual text previews remain clear.
+    const shouldShowImageIndicator = !(searchQuery ?? '').trim();
+    const imageIndicator = (() => {
+      if (!shouldShowImageIndicator) return null;
+
+      const content = String(note.content ?? '');
+      const lines = content.split(/\r?\n/);
+      const candidateLines = [lines[1] ?? '', lines[2] ?? ''];
+      const imageMatch = candidateLines
+        .map((l) => /^\s*!\[([^\]]*)\]\(\s*([^)]+?)\s*\)\s*$/.exec(String(l)))
+        .find(Boolean) as RegExpExecArray | undefined;
+
+      if (!imageMatch) return null;
+
+      const alt = (imageMatch[1] ?? '').trim() || 'Image';
+      const rawSrc = (imageMatch[2] ?? '').trim().replace(/^<|>$/g, '');
+
+      const resolveFn = window.electron?.resolveNoteAssetFileUrl;
+      const resolvedSrc =
+        rawSrc.startsWith('assets/') && typeof resolveFn === 'function'
+          ? resolveFn({
+              noteId,
+              note,
+              folders,
+              notebooks,
+              rel: rawSrc,
+            }) || rawSrc
+          : rawSrc;
+
+      // Avoid rendering data: thumbnails in the list (can be huge and cause jank).
+      const showThumb = resolvedSrc.startsWith('file://');
+
+      return (
+        <span className="note-list-item-image-indicator">
+          {showThumb ? (
+            <img
+              className="note-list-item-image-thumb"
+              src={resolvedSrc}
+              alt={alt}
+              loading="lazy"
+            />
+          ) : (
+            <span className="note-list-item-image-fallback" aria-hidden="true">
+              <FileSmallIcon />
+            </span>
+          )}
+          <span className="note-list-item-image-sep" aria-hidden="true" />
+          <span className="note-list-item-image-ellipsis" aria-hidden="true">
+            …
+          </span>
+        </span>
+      );
+    })();
+
     return (
       <div style={style} className={classes} role="row">
         <div className="note-list-item-content" role="cell">
@@ -128,6 +188,12 @@ export class NoteCell extends Component<Props> {
             </div>
             {'expanded' === displayMode && preview.length > 0 && (
               <div className="note-list-item-excerpt">
+                {imageIndicator && (
+                  <React.Fragment>
+                    {imageIndicator}
+                    <br />
+                  </React.Fragment>
+                )}
                 {withCheckboxCharacters(preview)
                   .split('\n')
                   .map((line, index) => (
@@ -138,14 +204,27 @@ export class NoteCell extends Component<Props> {
                   ))}
               </div>
             )}
+            {'expanded' === displayMode &&
+              preview.length === 0 &&
+              imageIndicator && (
+                <div className="note-list-item-excerpt">{imageIndicator}</div>
+              )}
             {'comfy' === displayMode && preview.length > 0 && (
               <div className="note-list-item-excerpt">
+                {imageIndicator && (
+                  <React.Fragment>{imageIndicator} </React.Fragment>
+                )}
                 {decorateWith(
                   decorators,
                   withCheckboxCharacters(preview).slice(0, 200)
                 )}
               </div>
             )}
+            {'comfy' === displayMode &&
+              preview.length === 0 &&
+              imageIndicator && (
+                <div className="note-list-item-excerpt">{imageIndicator}</div>
+              )}
           </button>
           <div className="note-list-item-status-right">
             {hasPendingChanges && (
@@ -179,6 +258,8 @@ const mapStateToProps: S.MapState<StateProps, OwnProps> = (
   isOffline: false,
   isOpened: state.ui.openedNote === noteId,
   lastUpdated: -Infinity,
+  folders: Array.from(state.data.folders),
+  notebooks: Array.from(state.data.notebooks),
   note: state.data.notes.get(noteId),
   searchQuery: state.ui.searchQuery,
 });

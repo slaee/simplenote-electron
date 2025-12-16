@@ -166,7 +166,7 @@ const getPreview = (content: string, searchQuery?: string) => {
 const formatPreview = (stripMarkdown: boolean, s: string): string =>
   stripMarkdown ? removeMarkdownWithFix(s) || s : s;
 
-const previewCache = new Map<string, [TitleAndPreview, boolean, string?]>();
+const previewCache = new WeakMap<T.Note, [TitleAndPreview, boolean, string?]>();
 
 /**
  * Returns the title and excerpt for a given note
@@ -179,7 +179,7 @@ export const noteTitleAndPreview = (
   searchQuery?: string
 ): TitleAndPreview => {
   const stripMarkdown = isMarkdown(note);
-  const cached = previewCache.get(note.content);
+  const cached = previewCache.get(note);
   if (cached) {
     const [value, wasMarkdown, savedQuery] = cached;
     if (wasMarkdown === stripMarkdown && savedQuery === searchQuery) {
@@ -195,7 +195,7 @@ export const noteTitleAndPreview = (
   );
   const result = { title, preview };
 
-  previewCache.set(note.content, [result, stripMarkdown, searchQuery]);
+  previewCache.set(note, [result, stripMarkdown, searchQuery]);
 
   return result;
 };

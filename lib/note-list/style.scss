@@ -177,6 +177,53 @@
     color: var(--foreground-color);
   }
 
+  .note-list-item-image-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    overflow: hidden;
+    vertical-align: middle;
+  }
+
+  .note-list-item-image-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex: 0 0 auto;
+    border: 1px solid var(--secondary-color);
+  }
+
+  .note-list-item-image-fallback {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 3px;
+    border: 1px solid var(--secondary-color);
+    color: var(--foreground-color);
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .note-list-item-image-sep {
+    height: 1px;
+    width: 18px;
+    background: var(--secondary-color);
+    flex: 0 0 auto;
+  }
+
+  .note-list-item-image-ellipsis {
+    flex: 0 0 auto;
+    color: var(--foreground-color);
+  }
+
   &:not(.note-list-item-pinned):hover .note-list-item-pinner {
     color: var(--foreground-color);
   }
