@@ -1,0 +1,85 @@
+@supports (-moz-appearance: none) {
+  /* CSS code */
+  html {
+    position: fixed;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.tools {
+  position: fixed;
+  top: 0;
+  width: 100vw;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  z-index: 100000;
+}
+
+button {
+  padding: 0 5px;
+  height: 26px;
+  margin-right: 10px;
+  box-sizing: border-box;
+}
+
+input {
+  width: 150px;
+  height: 26px;
+  padding: 0 5px;
+  box-sizing: border-box;
+
+  border: 1px solid #eee;
+  border-radius: 4px;
+  outline: none;
+  margin-right: 10px;
+}
+
+.language-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.language-selector label {
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.language-selector select {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  outline: none;
+  background-color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.editor-container {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 80px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+#editor {
+  box-sizing: border-box;
+  width: 100%;
+  font-size: 16px;
+  outline: none;
+}

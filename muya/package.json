@@ -1,0 +1,65 @@
+{
+  "name": "muya",
+  "type": "module",
+  "version": "0.0.39",
+  "private": true,
+  "packageManager": "pnpm@10.22.0",
+  "description": "Future markdown editor",
+  "author": "jocs <ransixi@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/marktext/muya#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marktext/muya.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marktext/muya/issues"
+  },
+  "keywords": [
+    "markdown",
+    "editor",
+    "web"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.5.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "pre-commit": "lint-staged",
+    "dev": "turbo dev:demo",
+    "lint:types": "turbo lint:types",
+    "build": "turbo build",
+    "test": "turbo test -- --passWithNoTests",
+    "coverage": "turbo coverage -- --passWithNoTests",
+    "lint": "eslint packages",
+    "lint:fix": "eslint packages --fix",
+    "lint:css": "stylelint \"**/*.css\"",
+    "postinstall": "husky install",
+    "release": "release-it",
+    "check-circular": "madge --circular packages/core/src/index.ts"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.2.0",
+    "@laynezh/vite-plugin-lib-assets": "2.1.3",
+    "@release-it-plugins/workspaces": "^5.0.3",
+    "@release-it/conventional-changelog": "^10.0.1",
+    "@typescript-eslint/parser": "^8.46.4",
+    "commitlint": "^20.1.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-format": "^1.0.2",
+    "husky": "9.1.7",
+    "lint-staged": "^16.2.6",
+    "madge": "^8.0.0",
+    "release-it": "^19.0.6",
+    "stylelint": "^16.25.0",
+    "stylelint-config-prettier": "^9.0.5",
+    "stylelint-config-rational-order": "^0.1.2",
+    "stylelint-config-standard": "^39.0.1",
+    "stylelint-order": "^7.0.0",
+    "turbo": "^2.6.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.2",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}
