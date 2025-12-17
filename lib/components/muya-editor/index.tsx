@@ -153,24 +153,8 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         muya.init();
       }
 
-      if (canCall(muya, 'on')) {
-        muya.on('change', (next: any) => {
-          // Some builds emit markdown string; keep it flexible.
-          const rawValue =
-            typeof next === 'string'
-              ? next
-              : canCall(muya, 'getMarkdown')
-                ? muya.getMarkdown()
-                : '';
-          const nextValue = normalizeForStorage(rawValue);
-          lastKnownValueRef.current = nextValue;
-          lastEmittedValueRef.current = nextValue;
-          onChange(nextValue);
-        });
-      }
-
-      // Ensure we propagate changes on every input so the note list title can
-      // update live while typing (Muya's 'change' event may be batched).
+      // Ensure we propagate changes on every edit so the note list title can
+      // update live while typing/backspacing (Muya may prevent native input events).
       let inputTimer: ReturnType<typeof setTimeout> | null = null;
 
       const exportMarkdown = (): string => {
@@ -209,6 +193,11 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         onChange(nextValue);
       };
 
+      const scheduleFlush = () => {
+        if (inputTimer) clearTimeout(inputTimer);
+        inputTimer = setTimeout(flushFromMuya, 60);
+      };
+
       const onInputCapture = (e: Event) => {
         // Ignore inputs outside this editor (we attach to document capture below).
         if (wrapperRef.current) {
@@ -219,9 +208,17 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             return;
           }
         }
-        if (inputTimer) clearTimeout(inputTimer);
-        inputTimer = setTimeout(flushFromMuya, 60);
+        scheduleFlush();
       };
+
+      // Muya emits internal change events even when it prevents default DOM input
+      // (e.g., some backspace/delete behaviors). Listen to these so Redux stays
+      // in sync and the note list title updates correctly.
+      const onMuyaChange = () => scheduleFlush();
+      if (canCall(muya, 'on')) {
+        muya.on('json-change', onMuyaChange);
+        muya.on('content-change', onMuyaChange);
+      }
 
       const readAsDataUrl = (file: File): Promise<string> =>
         new Promise((resolve, reject) => {
@@ -544,6 +541,10 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         document.removeEventListener('input', onInputCapture, true);
         document.removeEventListener('paste', onPasteCapture, true);
         if (inputTimer) clearTimeout(inputTimer);
+        if (canCall(muya, 'off')) {
+          muya.off('json-change', onMuyaChange);
+          muya.off('content-change', onMuyaChange);
+        }
         if (canCall(muyaRef.current, 'destroy')) {
           muyaRef.current.destroy();
         }
@@ -566,6 +567,12 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
 
       // Avoid resetting if it’s already in sync.
       if (lastKnownValueRef.current === nextValue) {
+        return;
+      }
+
+      if (canCall(muya, 'setContent')) {
+        muya.setContent(materializeForEditor(nextValue));
+        lastKnownValueRef.current = nextValue;
         return;
       }
 

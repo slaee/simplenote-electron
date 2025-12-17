@@ -109,6 +109,30 @@ body[data-theme='dark'] .muya-editor-root * {
   color: inherit !important;
 }
 
+// Align Muya editor width with Simplenote's line length setting.
+// Muya defaults to max-width: 800px with 50px side padding, which creates
+// very large gutters next to the note list.
+.muya-editor-root {
+  height: 100%;
+  width: 100%;
+
+  .mu-container {
+    max-width: none;
+    margin: 0;
+    padding: 0 calc((100% - 768px) / 2) 100px;
+  }
+}
+
+@media only screen and (width <= 1400px) {
+  .muya-editor-root .mu-container {
+    padding: 0 10% 100px;
+  }
+}
+
+.is-line-length-full .muya-editor-root .mu-container {
+  padding: 0 25px 100px;
+}
+
 // Placeholder styling (Muya uses contenteditable placeholders rather than <input> placeholders)
 // Cover common patterns: data-placeholder attr + empty editable pseudo content.
 body[data-theme='light'] .muya-editor-root ::placeholder {
