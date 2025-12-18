@@ -81,22 +81,20 @@ export class TagInput extends Component<Props> {
     // Necessary for IE11 support, because contenteditable elements
     // do not fire input or change events in IE11.
     this.inputObserver = new MutationObserver(this.onInputMutation);
-    this.inputObserver.observe(this.inputField, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
+    // Note: We defer observation to storeInput when the element is available
   }
 
   componentWillUnmount() {
-    invoke(
-      this,
-      'inputField.removeEventListener',
-      'paste',
-      this.parsePastedInput,
-      false
-    );
-    this.inputObserver.disconnect();
+    if (this.inputField) {
+      (this.inputField as unknown as HTMLElement).removeEventListener?.(
+        'paste',
+        this.parsePastedInput as unknown as EventListener,
+        false
+      );
+    }
+    if (this.inputObserver) {
+      this.inputObserver.disconnect();
+    }
   }
 
   completeSuggestion = (andThen: (...args: any[]) => any = identity) => {
@@ -239,15 +237,31 @@ export class TagInput extends Component<Props> {
   };
 
   storeInput = (ref: RefObject<HTMLDivElement> | null) => {
+    // Disconnect previous observer if any
+    if (this.inputObserver && this.inputField) {
+      this.inputObserver.disconnect();
+    }
+
     this.inputField = ref;
     this.props.inputRef(ref);
-    invoke(
-      this,
-      'inputField.addEventListener',
-      'paste',
-      this.parsePastedInput,
-      false
-    );
+
+    // Set up the paste event listener and mutation observer on the actual DOM element
+    if (ref) {
+      (ref as unknown as HTMLElement).addEventListener?.(
+        'paste',
+        this.parsePastedInput as unknown as EventListener,
+        false
+      );
+
+      // Observe the DOM element for mutations (IE11 support)
+      if (this.inputObserver) {
+        this.inputObserver.observe(ref as unknown as Node, {
+          characterData: true,
+          childList: true,
+          subtree: true,
+        });
+      }
+    }
   };
 
   submitTag = (event?: KeyboardEvent) => {

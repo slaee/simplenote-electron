@@ -79,13 +79,16 @@ export class TagField extends Component<Props, OwnState> {
 
   addTag = (tags: string) => {
     const { note, noteId } = this.props;
+    if (!note || !noteId) {
+      return;
+    }
     const newTags = tags.trim().replace(/\s+/g, ',').split(',') as T.TagName[];
 
     if (newTags.some(isEmailTag)) {
       this.showEmailTooltip();
     }
 
-    const sameTags = new Set(note.tags.map(tagHashOf));
+    const sameTags = new Set((note.tags ?? []).map(tagHashOf));
 
     newTags.forEach((tag) => {
       if (sameTags.has(tagHashOf(tag))) {
@@ -106,6 +109,10 @@ export class TagField extends Component<Props, OwnState> {
   deleteTag = (tagName: T.TagName) => {
     const { noteId } = this.props;
     const { selectedTag } = this.state;
+
+    if (!noteId) {
+      return;
+    }
 
     this.props.removeTag(noteId, tagName);
 

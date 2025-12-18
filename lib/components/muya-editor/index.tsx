@@ -1,5 +1,6 @@
 import React, {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -60,6 +61,9 @@ const ensureMuyaPlugins = () => {
 const canCall = (obj: any, methodName: string) =>
   obj && typeof obj[methodName] === 'function';
 
+// Configurable debounce delay for content changes (ms)
+const CONTENT_CHANGE_DEBOUNCE_MS = 60;
+
 const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
   ({ noteId, value, onChange, note, folders, notebooks }, ref) => {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -67,6 +71,8 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
     const muyaDomRef = useRef<HTMLElement | null>(null);
     const lastKnownValueRef = useRef<string>(value);
     const lastEmittedValueRef = useRef<string | null>(null);
+    const inputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef<boolean>(true);
 
     const materializeForEditor = (markdown: string): string => {
       try {
@@ -153,9 +159,11 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
         muya.init();
       }
 
+      // Mark component as mounted for async safety
+      isMountedRef.current = true;
+
       // Ensure we propagate changes on every edit so the note list title can
       // update live while typing/backspacing (Muya may prevent native input events).
-      let inputTimer: ReturnType<typeof setTimeout> | null = null;
 
       const exportMarkdown = (): string => {
         const muyaInst = muyaRef.current;
@@ -185,6 +193,9 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
       };
 
       const flushFromMuya = () => {
+        // Safety check: don't emit changes if component is unmounted
+        if (!isMountedRef.current) return;
+
         const raw = String(exportMarkdown() ?? '');
         const nextValue = normalizeForStorage(raw);
         if (nextValue === lastKnownValueRef.current) return;
@@ -194,8 +205,11 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
       };
 
       const scheduleFlush = () => {
-        if (inputTimer) clearTimeout(inputTimer);
-        inputTimer = setTimeout(flushFromMuya, 60);
+        if (inputTimerRef.current) clearTimeout(inputTimerRef.current);
+        inputTimerRef.current = setTimeout(
+          flushFromMuya,
+          CONTENT_CHANGE_DEBOUNCE_MS
+        );
       };
 
       const onInputCapture = (e: Event) => {
@@ -209,6 +223,18 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           }
         }
         scheduleFlush();
+      };
+
+      // Handle keyboard events for special keys (Backspace, Delete, Enter)
+      // These may be intercepted by Muya but we need to ensure changes propagate
+      const onKeyDownCapture = (e: KeyboardEvent) => {
+        if (!wrapperRef.current?.contains(e.target as Node)) {
+          return;
+        }
+        // Schedule flush for keys that typically modify content
+        if (['Backspace', 'Delete', 'Enter', 'Tab'].includes(e.key)) {
+          scheduleFlush();
+        }
       };
 
       // Muya emits internal change events even when it prevents default DOM input
@@ -612,12 +638,23 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
       // Attach to document capture so we still receive events even if Muya stops propagation.
       document.addEventListener('input', onInputCapture, true);
       document.addEventListener('paste', onPasteCapture, true);
+      document.addEventListener('keydown', onKeyDownCapture, true);
 
       // Cleanup if supported.
       return () => {
+        // Mark as unmounted to prevent async callbacks from firing
+        isMountedRef.current = false;
+
         document.removeEventListener('input', onInputCapture, true);
         document.removeEventListener('paste', onPasteCapture, true);
-        if (inputTimer) clearTimeout(inputTimer);
+        document.removeEventListener('keydown', onKeyDownCapture, true);
+
+        // Clear any pending debounced updates
+        if (inputTimerRef.current) {
+          clearTimeout(inputTimerRef.current);
+          inputTimerRef.current = null;
+        }
+
         if (canCall(muya, 'off')) {
           muya.off('json-change', onMuyaChange);
           muya.off('content-change', onMuyaChange);

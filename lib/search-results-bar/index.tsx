@@ -28,13 +28,17 @@ const SearchResultsBar: FunctionComponent<Props> = ({
   numberOfMatchesInNote: total,
   setSearchSelection,
 }) => {
-  const setPrev = (event: MouseEvent) => {
-    const newIndex = (total + (index ?? -1) - 1) % total;
+  const setPrev = (event: React.MouseEvent) => {
+    if (total <= 0) return;
+    const currentIndex = index ?? 0;
+    const newIndex = (currentIndex - 1 + total) % total;
     setSearchSelection(newIndex);
   };
 
-  const setNext = (event: MouseEvent) => {
-    const newIndex = (total + (index ?? -1) + 1) % total;
+  const setNext = (event: React.MouseEvent) => {
+    if (total <= 0) return;
+    const currentIndex = index ?? -1;
+    const newIndex = (currentIndex + 1) % total;
     setSearchSelection(newIndex);
   };
 

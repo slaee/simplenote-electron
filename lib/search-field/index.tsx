@@ -29,9 +29,14 @@ export class SearchField extends Component<Props> {
   static displayName = 'SearchField';
 
   inputField = createRef<HTMLInputElement>();
+  unregisterSearchField?: () => void;
 
   componentDidMount() {
-    registerSearchField(this.focus);
+    this.unregisterSearchField = registerSearchField(this.focus);
+  }
+
+  componentWillUnmount() {
+    this.unregisterSearchField?.();
   }
 
   blur = () => {

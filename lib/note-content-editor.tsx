@@ -69,9 +69,13 @@ class NoteContentEditor extends Component<Props> {
   handleChecklist = (event: Event) => {
     // Minimal behavior: append a task list item to the end of the note.
     // (Muya handles the actual rendering/checkbox UI itself.)
-    const current = this.props.note?.content ?? '';
+    const { noteId, note } = this.props;
+    if (!noteId || !note) {
+      return;
+    }
+    const current = note.content ?? '';
     const prefix = current.length > 0 && !current.endsWith('\n') ? '\n' : '';
-    this.props.editNote(this.props.noteId, {
+    this.props.editNote(noteId, {
       content: `${current}${prefix}- [ ] `,
     });
     this.props.insertTask();
@@ -83,7 +87,11 @@ class NoteContentEditor extends Component<Props> {
   hasFocus = () => this.muyaRef.current?.hasFocus() || false;
 
   onChange = (nextValue: string) => {
-    this.props.editNote(this.props.noteId, { content: nextValue });
+    const { noteId } = this.props;
+    if (!noteId) {
+      return;
+    }
+    this.props.editNote(noteId, { content: nextValue });
   };
 
   updateMatchesCount = () => {

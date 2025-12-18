@@ -3,7 +3,17 @@ import * as S from '../';
 
 const searchFields = new Set<Function>();
 
-export const registerSearchField = (focus: Function) => searchFields.add(focus);
+/**
+ * Register a search field focus function.
+ * Returns an unregister function that should be called on component unmount
+ * to prevent memory leaks.
+ */
+export const registerSearchField = (focus: Function): (() => void) => {
+  searchFields.add(focus);
+  return () => {
+    searchFields.delete(focus);
+  };
+};
 
 export const middleware: S.Middleware = () => {
   return (next) => (action: A.ActionType) => {
