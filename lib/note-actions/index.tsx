@@ -37,21 +37,22 @@ type Props = StateProps & DispatchProps;
 
 export class NoteActions extends Component<Props> {
   static displayName = 'NoteActions';
-  isMounted = false;
+  // Note: Cannot use 'isMounted' as it conflicts with React's deprecated getter-only property
+  private _isMounted = false;
   containerRef = React.createRef<HTMLDivElement>();
 
   componentDidMount() {
-    this.isMounted = true;
+    this._isMounted = true;
   }
 
   componentWillUnmount() {
-    this.isMounted = false;
+    this._isMounted = false;
   }
 
   handleFocusTrapDeactivate = () => {
     const { onFocusTrapDeactivate } = this.props;
 
-    if (this.isMounted) {
+    if (this._isMounted) {
       // Bit of a delay so that clicking the note actios toolbar will toggle the view properly.
       setTimeout(() => onFocusTrapDeactivate(), 200);
     }
