@@ -95,6 +95,12 @@ optgroup {
   }
 }
 
+// On macOS, the current find match is a bright highlight (often yellow)
+// with dark text for contrast. Ensure readability in dark mode.
+body[data-theme='dark'] .search-match[data-current-match='true'] {
+  color: var(--background-color);
+}
+
 /* stylelint-disable-next-line selector-class-pattern */
 .MuiTooltip-tooltip.icon-button__tooltip {
   background-color: var(--tertiary-color);

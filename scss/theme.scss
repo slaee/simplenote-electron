@@ -91,13 +91,16 @@ span[dir='ltr'] {
 // Muya editor text color should follow app theme.
 // App sets `document.body.dataset.theme` to 'light' or 'dark' in `lib/app.tsx`.
 body[data-theme='light'] .muya-editor-root {
-  color: #000 !important;
-  caret-color: #000;
+  color: var(--primary-color) !important;
+  caret-color: var(--primary-color);
 }
 
 body[data-theme='dark'] .muya-editor-root {
-  color: #fff !important;
-  caret-color: #fff;
+  color: var(--primary-color) !important;
+  caret-color: var(--primary-color);
+
+  // Make code blocks visibly layered over the dark editor background.
+  --code-block-bg-color: var(--secondary-highlight-color);
 }
 
 // Muya applies colors to nested nodes; force inheritance for editor subtree.

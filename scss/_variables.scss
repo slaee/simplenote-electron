@@ -28,65 +28,74 @@ $medium: 900px;
 
 :root,
 body[data-theme='light'] {
-  --background-color: #fff; // $studio-white
-  --foreground-color: #646970; // $studio-gray-50
-  --primary-color: #2c3338; // $studio-gray-80
-  --secondary-color: #dcdcde; // $studio-gray-5
-  --tertiary-color: #a7aaad; // $studio-gray-20
-  --accent-color: #3361cc; // $studio-simplenote-blue-50
-  --secondary-accent-color: #c3c4c7; // $studio-gray-10
-  --tertiary-accent-color: #8c8f94; // $studio-gray-30
-  --highlight-color: #ced9f2; // $studio-simplenote-blue-5
-  --secondary-highlight-color: #f6f7f7; // $studio-gray-0;
-  --tertiary-highlight-color: #d63638; // $studio-red-50
-  --overlay-color: rgba(0, 0, 0, 0.2); // black with 20% opacity
-  --search-selection-color: #f0c930; // $studio-yellow-20
-  --search-highlight-color: #ced9f2; // $studio-simplenote-blue-5
-  --wordpress-color: #006088; // $studio-wordpress-blue-50
-  --active-controls-color: #1ed15a; // $studio-green-20
-  --inactive-controls-color: #c3c4c7; // $studio-gray-10
-  --warning-highlight-color: #faa754; // $studio-orange-20
-  --primary-button-bg-color: #3361cc; // $studio-simplenote-blue-50
-  --secondary-button-bg-color: #646970; // $studio-gray-50
-  --primary-button-fg-color: #fff; // $studio-white
-  --primary-branding-color: #3361cc; // $studio-simplenote-blue-50
-  --placeholder-color: #646970; // $studio-gray-50
+  // macOS-inspired light palette
+  --background-color: #ffffff;
+  --foreground-color: #6e6e73;
+  --primary-color: #1d1d1f;
+  --secondary-color: #d1d1d6;
+  --tertiary-color: #aeaeb2;
+  --accent-color: #007aff;
+  --secondary-accent-color: #8e8e93;
+  --tertiary-accent-color: #6e6e73;
+  --highlight-color: rgba(0, 122, 255, 0.14);
+  --secondary-highlight-color: #f2f2f7;
+  --tertiary-highlight-color: #ff3b30;
+  --overlay-color: rgba(0, 0, 0, 0.24);
+  --search-selection-color: #ffd60a;
+  --search-highlight-color: rgba(0, 122, 255, 0.18);
+  --wordpress-color: #007aff;
+  --active-controls-color: #34c759;
+  --inactive-controls-color: #c7c7cc;
+  --warning-highlight-color: #ff9f0a;
+  --primary-button-bg-color: #007aff;
+  --secondary-button-bg-color: #6e6e73;
+  --primary-button-fg-color: #ffffff;
+  --primary-branding-color: #007aff;
+  --placeholder-color: #8e8e93;
   // readonly-input-color = $studio-black with 0.05 opacity
   --readonly-input-color: rgba(0, 0, 0, 0.05);
-  --readonly-input-highlight-color: #c3c4c7; // $studio-gray-10
-  --primary-slider-color: #dcdcde; // $studio-gray-5
-  --secondary-slider-color: #fff; // $studio-white
-  --primary-tag-chip-color: #dcdcde; // $studio-gray-5
-  --secondary-tag-chip-color: #facfd2; // $studio-red-5
-  --settings-fg-color: #2c3338; // $studio-gray-80
-  --alternative-highlight-color: #f6f7f7; // $studio-gray-0;
-  --disabled-text-color: #dcdcde; // $studio-gray-5
+  --readonly-input-highlight-color: #c7c7cc;
+  --primary-slider-color: #d1d1d6;
+  --secondary-slider-color: #ffffff;
+  --primary-tag-chip-color: #e5e5ea;
+  --secondary-tag-chip-color: #ffd1d1;
+  --settings-fg-color: #1d1d1f;
+  --alternative-highlight-color: #f2f2f7;
+  --disabled-text-color: #c7c7cc;
 }
 
 body[data-theme='dark'] {
-  --background-color: #0f0f0f;
-  --foreground-color: #a7aaad; // $studio-gray-20
-  --primary-color: #f5f5f5;
-  --secondary-color: #1a1a1a;
-  --tertiary-color: #2c3338; // $studio-gray-80
-  --accent-color: #84a4f0; // $studio-simplenote-blue-20
-  --secondary-accent-color: #3c434a; // $studio-gray-70
-  // highlight-color = $studio-simplenote-blue-50 with 40% opacity
-  --highlight-color: rgba(51, 97, 204, 0.4);
-  --secondary-highlight-color: #1a1a1a;
-  --search-highlight-color: #3361cc; // $studio-simplenote-blue-50
-  --search-selection-color: #deb100; // $studio-yellow-30
-  --placeholder-color: #a7aaad; // $studio-gray-20
-  --primary-button-bg-color: #3361cc; // $studio-simplenote-blue-50
-  --tertiary-highlight-color: #ff8085; // $studio-red-20
-  // readonly-input-color = $studio-white with 0.07 opacity
-  --readonly-input-color: rgba(255, 255, 255, 0.07);
-  --readonly-input-highlight-color: #50575e; // $studio-gray-60
-  --primary-slider-color: #2c3338; // $studio-gray-80
-  --secondary-slider-color: #fff; // $studio-white
-  --primary-tag-chip-color: #1a1a1a;
-  --secondary-tag-chip-color: #8a2424; // $studio-red-70
-  --settings-fg-color: #dcdcde; // $studio-gray-5
-  --alternative-highlight-color: #1a1a1a;
-  --disabled-text-color: #50575e; // $studio-gray-60
+  // macOS-inspired dark palette
+  --background-color: #1c1c1e;
+  --foreground-color: #8e8e93;
+  --primary-color: #f2f2f7;
+  --secondary-color: #3a3a3c;
+  --tertiary-color: #48484a;
+  --accent-color: #0a84ff;
+  --secondary-accent-color: #8e8e93;
+  --tertiary-accent-color: #636366;
+  --highlight-color: rgba(10, 132, 255, 0.25);
+  --secondary-highlight-color: #2c2c2e;
+  --search-highlight-color: rgba(10, 132, 255, 0.35);
+  --search-selection-color: #ffd60a;
+  --placeholder-color: #8e8e93;
+  --primary-button-bg-color: #0a84ff;
+  --secondary-button-bg-color: #636366;
+  --primary-button-fg-color: #ffffff;
+  --primary-branding-color: #0a84ff;
+  --tertiary-highlight-color: #ff453a;
+  --overlay-color: rgba(0, 0, 0, 0.55);
+  --wordpress-color: #0a84ff;
+  --active-controls-color: #32d74b;
+  --inactive-controls-color: #636366;
+  --warning-highlight-color: #ff9f0a;
+  --readonly-input-color: rgba(255, 255, 255, 0.08);
+  --readonly-input-highlight-color: #636366;
+  --primary-slider-color: #3a3a3c;
+  --secondary-slider-color: #ffffff;
+  --primary-tag-chip-color: #2c2c2e;
+  --secondary-tag-chip-color: #8a2424;
+  --settings-fg-color: #f2f2f7;
+  --alternative-highlight-color: #2c2c2e;
+  --disabled-text-color: #636366;
 }
