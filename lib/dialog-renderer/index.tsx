@@ -9,7 +9,6 @@ import ImportDialog from '../dialogs/import';
 import KeybindingsDialog from '../dialogs/keybindings';
 import LogoutConfirmation from '../dialogs/logout-confirmation';
 import SettingsDialog from '../dialogs/settings';
-import ShareDialog from '../dialogs/share';
 import TrashTagConfirmation from '../dialogs/trash-tag-confirmation';
 import { closeDialog } from '../state/ui/actions';
 
@@ -64,8 +63,6 @@ export class DialogRenderer extends Component<Props> {
               <LogoutConfirmation key="logout-confirmation" />
             ) : 'SETTINGS' === dialog.type ? (
               <SettingsDialog key="settings" />
-            ) : 'SHARE' === dialog.type ? (
-              <ShareDialog key="share" />
             ) : 'TRASH-TAG-CONFIRMATION' === dialog.type ? (
               <TrashTagConfirmation
                 key="trash-tag-confirmation"

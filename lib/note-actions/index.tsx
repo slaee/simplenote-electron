@@ -1,14 +1,8 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
-import { includes, isEmpty } from 'lodash';
-import { saveAs } from 'file-saver';
 
-import ClipboardButton from '../components/clipboard-button';
 import CheckboxControl from '../controls/checkbox';
-import getNoteTitleAndPreview from '../utils/note-utils';
-import Spinner from '../components/spinner';
 
 import actions from '../state/actions';
 
@@ -27,8 +21,6 @@ type DispatchProps = {
   markdownNote: (noteId: T.EntityId, shouldEnableMarkdown: boolean) => any;
   onFocusTrapDeactivate: () => any;
   pinNote: (noteId: T.EntityId, shouldPin: boolean) => any;
-  publishNote: (noteId: T.EntityId, shouldPublish: boolean) => any;
-  shareNote: () => any;
   toggleRevisions: () => any;
   trashNote: () => any;
 };
@@ -58,39 +50,8 @@ export class NoteActions extends Component<Props> {
     }
   };
 
-  getNoteLink = (note: T.Note, noteId: T.EntityId) => {
-    const { title } = getNoteTitleAndPreview(note);
-    return `[${title}](curnote://note/${noteId})`;
-  };
-
-  getPublishURL = (url: string | undefined) => {
-    return isEmpty(url) ? null : `http://simp.ly/p/${url}`;
-  };
-
-  downloadMarkdown = () => {
-    const { note, noteId } = this.props;
-    const { title } = getNoteTitleAndPreview(note);
-    const safeTitle =
-      title.trim().length > 0 ? title.trim() : `note-${String(noteId)}`;
-    const fileName =
-      safeTitle
-        .toLowerCase()
-        .replace(/[^a-z0-9-_]+/g, '_')
-        .replace(/^_+|_+$/g, '') || `note-${String(noteId)}.md`;
-
-    const finalName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
-
-    const blob = new Blob([note.content ?? ''], {
-      type: 'text/markdown;charset=utf-8',
-    });
-    saveAs(blob, finalName);
-  };
-
   render() {
-    const { hasRevisions, isMarkdown, isPinned, noteId, note } = this.props;
-    const isPublished = includes(note.systemTags, 'published');
-    const publishURL = this.getPublishURL(note.publishURL);
-    const noteLink = this.getNoteLink(note, noteId);
+    const { hasRevisions, isMarkdown, isPinned } = this.props;
 
     return (
       <FocusTrap
@@ -139,30 +100,6 @@ export class NoteActions extends Component<Props> {
               </span>
             </label>
 
-            <div className="note-actions-item note-actions-internal-link">
-              <ClipboardButton
-                container={this.containerRef}
-                text={noteLink}
-                linkText="Copy Internal Link"
-              />
-            </div>
-            <div className="note-actions-item">
-              <ClipboardButton
-                container={this.containerRef}
-                text={note.content}
-                linkText="Copy Markdown"
-              />
-            </div>
-            <div className="note-actions-item">
-              <button
-                className="button button-borderless"
-                type="button"
-                onClick={this.downloadMarkdown}
-              >
-                Download as Markdown…
-              </button>
-            </div>
-
             {hasRevisions && (
               <div className="note-actions-item">
                 <button
@@ -181,56 +118,6 @@ export class NoteActions extends Component<Props> {
               </div>
             )}
           </div>
-          <div className="note-actions-panel note-actions-public-link">
-            <label
-              className="note-actions-item"
-              htmlFor="note-actions-publish-checkbox"
-            >
-              <span className="note-actions-item-text">
-                <span className="note-actions-name">Publish</span>
-              </span>
-              <span className="note-actions-item-control">
-                <CheckboxControl
-                  id="note-actions-publish-checkbox"
-                  checked={isPublished}
-                  isStandard
-                  onChange={() => {
-                    this.publishNote(!isPublished);
-                  }}
-                />
-              </span>
-            </label>
-            <div
-              className={classNames('note-actions-item', {
-                'note-actions-item-disabled': !isPublished || !publishURL,
-              })}
-            >
-              {isPublished && publishURL ? (
-                <ClipboardButton
-                  container={this.containerRef}
-                  text={publishURL}
-                  linkText="Copy Link"
-                />
-              ) : isPublished && !publishURL ? (
-                <>
-                  <span className="note-actions-disabled">Copy Link</span>
-                  <Spinner isWhite={false} size={16} thickness={5} />
-                </>
-              ) : (
-                <span className="note-actions-disabled">Copy Link</span>
-              )}
-            </div>
-          </div>
-          <div className="note-actions-panel">
-            <div className="note-actions-item">
-              <button
-                className="button button-borderless"
-                onClick={this.props.shareNote}
-              >
-                Collaborate…
-              </button>
-            </div>
-          </div>
           <div className="note-actions-panel">
             <div className="note-actions-item note-actions-trash">
               <button
@@ -248,9 +135,6 @@ export class NoteActions extends Component<Props> {
 
   pinNote = (shouldPin: boolean) =>
     this.props.pinNote(this.props.noteId, shouldPin);
-
-  publishNote = (shouldPublish: boolean) =>
-    this.props.publishNote(this.props.noteId, shouldPublish);
 
   markdownNote = (shouldEnableMarkdown: boolean) =>
     this.props.markdownNote(this.props.noteId, shouldEnableMarkdown);
@@ -275,8 +159,6 @@ const mapDispatchToProps: S.MapDispatch<DispatchProps> = {
   markdownNote: actions.data.markdownNote,
   onFocusTrapDeactivate: actions.ui.closeNoteActions,
   pinNote: actions.data.pinNote,
-  publishNote: actions.data.publishNote,
-  shareNote: () => actions.ui.showDialog('SHARE'),
   toggleRevisions: actions.ui.toggleRevisions,
   trashNote: actions.ui.trashOpenNote,
 };
