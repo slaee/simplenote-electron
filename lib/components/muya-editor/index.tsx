@@ -272,7 +272,18 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
       const dataUrlRe =
         /data:image\/(png|jpeg|jpg|gif|webp);base64,[\sA-Za-z0-9+/=]+/g;
 
-      const isProbablyUrl = (s: string) => /^https?:\/\//i.test(s);
+      const isHttpUrl = (s: string) => /^https?:\/\//i.test(s);
+      const isFileUrl = (s: string) => /^file:\/\//i.test(s);
+      const looksLikeAbsolutePath = (s: string) =>
+        /^\//.test(s) || /^[a-zA-Z]:[\\/]/.test(s);
+      const isImagePathLike = (s: string) =>
+        /\.(png|jpe?g|gif|webp|svg)(?=$|[?#])/i.test(s);
+      const isImageFile = (f: File | null | undefined) => {
+        if (!f) return false;
+        if (f.type && f.type.startsWith('image/')) return true;
+        // Some clipboard providers leave `file.type` empty; fall back to extension.
+        return /\.(png|jpe?g|gif|webp|svg)$/i.test(String(f.name || ''));
+      };
 
       const saveUrlToAssets = async (url: string) => {
         const saveFn = window.electron?.saveNoteAssetFromUrl;
@@ -321,20 +332,35 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
             // Some Electron/Chromium clipboard implementations expose the pasted image
             // via `clipboardData.files` rather than `clipboardData.items`.
             const files = Array.from((dt.files as unknown as FileList) ?? []);
-            const imageFile = files.find(
-              (f) => f && f.type?.startsWith('image/')
-            );
+            const imageFile = files.find((f) => isImageFile(f));
             return imageFile ?? null;
           };
 
           // 1) Prefer binary images from clipboard items.
           const items = Array.from(dt.items ?? []);
-          const imageItem = items.find((it) => it.type?.startsWith('image/'));
-          if (imageItem) {
-            const file =
-              imageItem.getAsFile() ?? findImageFileFromDataTransfer();
+          const fileFromItems = (() => {
+            for (const it of items) {
+              if (it.kind !== 'file') continue;
+              const f = it.getAsFile();
+              if (isImageFile(f)) return f;
+            }
+            return null;
+          })();
+
+          if (fileFromItems) {
+            const file = fileFromItems ?? findImageFileFromDataTransfer();
             if (!file) return;
-            const mimeType = file.type || 'image/png';
+            const mimeType =
+              file.type ||
+              (/\.jpe?g$/i.test(file.name || '')
+                ? 'image/jpeg'
+                : /\.gif$/i.test(file.name || '')
+                  ? 'image/gif'
+                  : /\.webp$/i.test(file.name || '')
+                    ? 'image/webp'
+                    : /\.svg$/i.test(file.name || '')
+                      ? 'image/svg+xml'
+                      : 'image/png');
             if (!canSaveAssets) return;
             // Take over synchronously before any async work so Muya never sees this paste.
             takeOverPasteEvent(e);
@@ -353,7 +379,17 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           // 1.25) Fallback: binary image in `clipboardData.files` without an image item.
           const fileOnlyImage = findImageFileFromDataTransfer();
           if (fileOnlyImage) {
-            const mimeType = fileOnlyImage.type || 'image/png';
+            const mimeType =
+              fileOnlyImage.type ||
+              (/\.jpe?g$/i.test(fileOnlyImage.name || '')
+                ? 'image/jpeg'
+                : /\.gif$/i.test(fileOnlyImage.name || '')
+                  ? 'image/gif'
+                  : /\.webp$/i.test(fileOnlyImage.name || '')
+                    ? 'image/webp'
+                    : /\.svg$/i.test(fileOnlyImage.name || '')
+                      ? 'image/svg+xml'
+                      : 'image/png');
             if (!canSaveAssets) return;
             takeOverPasteEvent(e);
             const dataUrl = await readAsDataUrl(fileOnlyImage);
@@ -400,7 +436,11 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
               const hasSupportedImg = imgs.some((img) => {
                 const src = (img.getAttribute('src') ?? '').trim();
                 return (
-                  src.startsWith('data:image/') || (src && isProbablyUrl(src))
+                  src.startsWith('data:image/') ||
+                  (src &&
+                    (isHttpUrl(src) ||
+                      isFileUrl(src) ||
+                      (looksLikeAbsolutePath(src) && isImagePathLike(src))))
                 );
               });
               if (!hasSupportedImg) {
@@ -446,7 +486,24 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
                 }
 
                 // remote URL
-                if (isProbablyUrl(src)) {
+                if (isHttpUrl(src)) {
+                  const saved = await saveUrlToAssets(src);
+                  const alt = (img.getAttribute('alt') ?? 'pasted-image')
+                    .trim()
+                    .slice(0, 64);
+                  if (saved?.fileUrl) {
+                    markdownParts.push(`![${alt}](${saved.fileUrl})`);
+                  } else {
+                    markdownParts.push(`![${alt}](${src})`);
+                  }
+                  continue;
+                }
+
+                // local file URL or absolute path
+                if (
+                  isFileUrl(src) ||
+                  (looksLikeAbsolutePath(src) && isImagePathLike(src))
+                ) {
                   const saved = await saveUrlToAssets(src);
                   const alt = (img.getAttribute('alt') ?? 'pasted-image')
                     .trim()
@@ -470,23 +527,43 @@ const MuyaEditor = forwardRef<MuyaEditorHandle, Props>(
           }
 
           // 2) Handle pasting text that includes data URLs (common when copying rendered HTML).
-          const text = dt.getData('text/plain') ?? '';
-          if (!text) return;
-
-          // URL-only paste (common when copying an image link or dragging from web)
           const uriList = dt.getData('text/uri-list') ?? '';
+          const text = dt.getData('text/plain') ?? '';
           const urlOnly = (uriList || text).trim();
-          if (isProbablyUrl(urlOnly) && /^https?:\/\/\S+$/i.test(urlOnly)) {
-            // try to store as asset and insert markdown image link
-            const saved = await saveUrlToAssets(urlOnly);
-            if (saved) {
+          if (!urlOnly) return;
+
+          const isSingleToken = !/\s/.test(urlOnly);
+
+          // URL/path-only paste (common when copying an image link, dragging from web,
+          // or copying a local image file path from the OS).
+          if (isSingleToken) {
+            if (isHttpUrl(urlOnly) && /^https?:\/\/\S+$/i.test(urlOnly)) {
+              // try to store as asset and insert markdown image link
+              const saved = await saveUrlToAssets(urlOnly);
+              if (saved) {
+                takeOverPasteEvent(e);
+                insertTextAtCursor(
+                  `![pasted-image](${saved.fileUrl || saved.rel})`
+                );
+                return;
+              }
+            }
+
+            if (
+              (isFileUrl(urlOnly) ||
+                (looksLikeAbsolutePath(urlOnly) && isImagePathLike(urlOnly))) &&
+              isImagePathLike(urlOnly)
+            ) {
+              const saved = await saveUrlToAssets(urlOnly);
               takeOverPasteEvent(e);
               insertTextAtCursor(
-                `![pasted-image](${saved.fileUrl || saved.rel})`
+                `![pasted-image](${saved?.fileUrl || urlOnly})`
               );
               return;
             }
           }
+
+          if (!text) return;
 
           const matches = text.match(dataUrlRe);
           if (!matches || matches.length === 0) return;

@@ -6,7 +6,7 @@ const {
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { pathToFileURL } = require('url');
+const { pathToFileURL, fileURLToPath } = require('url');
 const sanitizeFilename = require('sanitize-filename');
 
 const NOTES_ROOT_NAME = 'SimpleNotes';
@@ -504,7 +504,6 @@ const electronAPI = {
   },
   saveNoteAssetFromUrl: async ({ noteId, note, url, folders, notebooks }) => {
     try {
-      const fetch = require('electron-fetch').default;
       const root = getNotesRoot();
       ensureDir(root);
       const metaPath = path.join(root, META_DIR_NAME, META_FILE_NAME);
@@ -534,10 +533,39 @@ const electronAPI = {
       const assetsDir = path.join(noteDir, 'assets');
       ensureDir(assetsDir);
 
-      const res = await fetch(url);
-      if (!res.ok) {
-        return null;
+      const urlStr = String(url || '').trim();
+      const isFileUrl = /^file:\/\//i.test(urlStr);
+      const isAbsolutePath =
+        /^\//.test(urlStr) || /^[a-zA-Z]:[\\/]/.test(urlStr);
+
+      const extFromPath = (p) =>
+        String(path.extname(p) || '')
+          .replace(/^\./, '')
+          .toLowerCase();
+      const normalizeExt = (ext) => (ext === 'jpeg' ? 'jpg' : ext);
+      const isSupportedImageExt = (ext) =>
+        ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
+
+      // Support local file URLs/paths (common when pasting an image file path from the OS).
+      if (isFileUrl || isAbsolutePath) {
+        const localPath = isFileUrl ? fileURLToPath(urlStr) : urlStr;
+        const extRaw = extFromPath(localPath);
+        if (!isSupportedImageExt(extRaw)) return null;
+        if (!fs.existsSync(localPath)) return null;
+
+        const buffer = await fs.promises.readFile(localPath);
+        const fileName = `pasted-${Date.now()}.${normalizeExt(extRaw)}`;
+        const filePath = path.join(assetsDir, fileName);
+        await fs.promises.writeFile(filePath, buffer);
+
+        const rel = `assets/${fileName}`;
+        const fileUrl = pathToFileURL(filePath).toString();
+        return { rel, fileUrl };
       }
+
+      const fetch = require('electron-fetch').default;
+      const res = await fetch(urlStr);
+      if (!res.ok) return null;
 
       const contentType =
         (res.headers && res.headers.get && res.headers.get('content-type')) ||

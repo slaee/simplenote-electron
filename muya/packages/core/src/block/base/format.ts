@@ -210,6 +210,175 @@ function checkTokenIsInlineFormat(token: Token) {
 class Format extends Content {
   static override blockName = 'format';
 
+  /**
+   * Return the inline image element that is logically "before" the caret.
+   * This is mainly used to make Backspace remove inline images rendered as
+   * `contenteditable="false"` atomic nodes.
+   */
+  private _getInlineImageBeforeCaret(): HTMLElement | null {
+    const dom = this.domNode;
+    if (!dom) return null;
+
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    if (!range.collapsed) return null;
+
+    const { startContainer, startOffset } = range;
+
+    const lastDescendant = (node: Node): Node => {
+      let cur = node;
+      while (cur.lastChild) cur = cur.lastChild;
+      return cur;
+    };
+
+    const previousNode = (node: Node): Node | null => {
+      let cur: Node | null = node;
+      while (cur && cur !== dom) {
+        if (cur.previousSibling) return lastDescendant(cur.previousSibling);
+        cur = cur.parentNode;
+      }
+      return null;
+    };
+
+    const closestInlineImage = (node: Node | null): HTMLElement | null => {
+      if (!node) return null;
+      const el =
+        node.nodeType === Node.ELEMENT_NODE
+          ? (node as Element)
+          : (node.parentElement as Element | null);
+      const wrapper = el?.closest?.(
+        `.${CLASS_NAMES.MU_INLINE_IMAGE}`
+      ) as HTMLElement | null;
+      return wrapper && dom.contains(wrapper) ? wrapper : null;
+    };
+
+    // If the caret is inside an inline image wrapper, decide whether it's at the end
+    // (meaning Backspace should delete the image) or at the beginning (meaning Backspace
+    // should delete the previous content, not this image).
+    const containerEl =
+      startContainer.nodeType === Node.ELEMENT_NODE
+        ? (startContainer as Element)
+        : (startContainer.parentElement as Element | null);
+    const withinImage = containerEl?.closest?.(
+      `.${CLASS_NAMES.MU_INLINE_IMAGE}`
+    ) as HTMLElement | null;
+
+    if (withinImage && dom.contains(withinImage)) {
+      const imageContainer =
+        (withinImage.querySelector(
+          `.${CLASS_NAMES.MU_IMAGE_CONTAINER}`
+        ) as HTMLElement | null) ?? null;
+
+      // When the image is empty/failed/loading (no <img> in container), browsers often
+      // place the caret "inside" the wrapper at offset 0. In that state, Backspace should
+      // still delete the image node.
+      const hasImg = !!imageContainer?.querySelector('img');
+      if (!hasImg) return withinImage;
+
+      const isAtEndOfImageContainer =
+        imageContainer &&
+        startContainer === imageContainer &&
+        startOffset >= imageContainer.childNodes.length;
+
+      const isAtEndOfImageWrapper =
+        startContainer === withinImage &&
+        startOffset >= withinImage.childNodes.length;
+
+      if (isAtEndOfImageContainer || isAtEndOfImageWrapper) {
+        return withinImage;
+      }
+
+      // Caret is at/inside the image wrapper, but not at its end. Treat it as being
+      // before the image and only consider nodes before the wrapper.
+      return closestInlineImage(previousNode(withinImage));
+    }
+
+    // Find the DOM node immediately before the caret.
+    const nodeBeforeCaret: Node | null = (() => {
+      if (startContainer.nodeType === Node.TEXT_NODE) {
+        // Caret is inside text - only consider "before" when at the start of the text node.
+        if (startOffset > 0) return null;
+        return previousNode(startContainer);
+      }
+
+      // Element node: offset is a child index.
+      if (startOffset > 0) {
+        const child = startContainer.childNodes[startOffset - 1];
+        return child ? lastDescendant(child) : null;
+      }
+
+      return previousNode(startContainer);
+    })();
+
+    return closestInlineImage(nodeBeforeCaret);
+  }
+
+  /**
+   * Convert a DOM selection boundary (node+offset) to a raw-text offset for this block.
+   * This uses the same `getTextContent` logic that treats inline images as their `data-raw`.
+   */
+  private _getRawOffsetFromDomPosition(
+    boundaryNode: Node,
+    boundaryOffset: number
+  ): number | null {
+    const dom = this.domNode;
+    if (!dom) return null;
+
+    try {
+      const r = document.createRange();
+      r.setStart(dom, 0);
+      r.setEnd(boundaryNode, boundaryOffset);
+      const fragment = r.cloneContents();
+      const text = getTextContent(fragment, [
+        CLASS_NAMES.MU_MATH_RENDER,
+        CLASS_NAMES.MU_RUBY_RENDER,
+      ]);
+      return text.length;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Delete the current DOM selection range inside this block (if any) using raw offsets.
+   * Returns true if the deletion was handled (default prevented).
+   */
+  private _deleteSelectionRange(event: Event): boolean {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
+
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return false;
+
+    const rawStart = this._getRawOffsetFromDomPosition(
+      range.startContainer,
+      range.startOffset
+    );
+    const rawEnd = this._getRawOffsetFromDomPosition(
+      range.endContainer,
+      range.endOffset
+    );
+
+    if (rawStart == null || rawEnd == null) return false;
+
+    const start = Math.max(0, Math.min(rawStart, rawEnd));
+    const end = Math.max(0, Math.max(rawStart, rawEnd));
+    if (start === end) return false;
+
+    const oldText = this.text;
+    const safeStart = Math.min(start, oldText.length);
+    const safeEnd = Math.min(end, oldText.length);
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.text = oldText.substring(0, safeStart) + oldText.substring(safeEnd);
+    this.setCursor(safeStart, safeStart, true);
+
+    return true;
+  }
+
   private _checkCursorInTokenType(
     text: string,
     offset: number,
@@ -1187,8 +1356,25 @@ class Format extends Content {
 
   override backspaceHandler(event: Event): void {
     const { start, end } = this.getCursor() ?? {};
-    // Let input handler to handle this case.
-    if (!start || !end || start?.offset !== end?.offset) return;
+    if (!start || !end) return;
+
+    // When a selection range exists, handle deletion ourselves so inline images
+    // (contenteditable=false) never get "stuck" in the DOM.
+    if (start.offset !== end.offset) {
+      this._deleteSelectionRange(event);
+      return;
+    }
+
+    // Inline images are rendered as `contenteditable="false"` nodes, so native Backspace
+    // often does nothing. Treat an image immediately before the caret as an atomic unit
+    // and delete it in one keypress.
+    const inlineImage = this._getInlineImageBeforeCaret();
+    if (inlineImage) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.deleteImage(getImageInfo(inlineImage));
+      return;
+    }
 
     // fix: #897 in marktext repo
     const { text } = this;
@@ -1266,6 +1452,12 @@ class Format extends Content {
   override deleteHandler(event: KeyboardEvent): void {
     const { start, end } = this.getCursor()!;
     const { text } = this;
+    // When a selection range exists, handle deletion ourselves so inline images
+    // (contenteditable=false) never get "stuck" in the DOM.
+    if (start && end && start.offset !== end.offset) {
+      this._deleteSelectionRange(event);
+      return;
+    }
     // Let input handler to handle this case.
     if (start.offset !== end.offset || start.offset !== text.length) return;
 

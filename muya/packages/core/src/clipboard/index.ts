@@ -198,18 +198,16 @@ class Clipboard {
             position === 'start' ? index >= offset : index <= offset
           ),
         });
-      } else {
-        if (position === 'start' && startOffset < startBlock.text.length) {
-          copyState.push({
-            name: 'paragraph',
-            text: startBlock.text.substring(startOffset),
-          });
-        } else if (position === 'end' && endOffset > 0) {
-          copyState.push({
-            name: 'paragraph',
-            text: endBlock.text.substring(0, endOffset),
-          });
-        }
+      } else if (position === 'start' && startOffset < startBlock.text.length) {
+        copyState.push({
+          name: 'paragraph',
+          text: startBlock.text.substring(startOffset),
+        });
+      } else if (position === 'end' && endOffset > 0) {
+        copyState.push({
+          name: 'paragraph',
+          text: endBlock.text.substring(0, endOffset),
+        });
       }
     };
 
@@ -399,16 +397,14 @@ class Clipboard {
             else item.remove();
           }
         });
-      } else {
-        if (position === 'start') {
-          startBlock.text = startBlock.text.substring(0, startOffset);
-          cursorBlock = startBlock;
-          cursorOffset = startOffset;
-        } else if (position === 'end') {
-          if (cursorBlock) {
-            cursorBlock.text += endBlock.text.substring(endOffset);
-            endOutBlock.remove();
-          }
+      } else if (position === 'start') {
+        startBlock.text = startBlock.text.substring(0, startOffset);
+        cursorBlock = startBlock;
+        cursorOffset = startOffset;
+      } else if (position === 'end') {
+        if (cursorBlock) {
+          cursorBlock.text += endBlock.text.substring(endOffset);
+          endOutBlock.remove();
         }
       }
     };
@@ -506,7 +502,6 @@ class Clipboard {
     }
   }
 
-  // eslint-disable-next-line complexity
   async pasteHandler(event: ClipboardEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
@@ -532,6 +527,94 @@ class Clipboard {
     }
 
     if (!anchorBlock || !event.clipboardData) return;
+
+    // Handle pasting binary images (clipboard file items).
+    // Many sources (browsers, screenshot tools, OS clipboard) provide the image bytes
+    // via `clipboardData.items` instead of (or in addition to) `text/html`.
+    if (this.pasteType === 'normal') {
+      const items = Array.from(event.clipboardData.items ?? []);
+      const filesFromItems = items
+        .filter((it) => it.kind === 'file')
+        .map((it) => it.getAsFile())
+        .filter((file): file is File => {
+          if (!file) return false;
+          if (file.type && file.type.startsWith('image/')) return true;
+          // Some clipboard providers leave `file.type` empty; fall back to extension.
+          return /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name || '');
+        });
+      const filesFromFileList = Array.from(
+        event.clipboardData.files ?? []
+      ).filter((file): file is File => {
+        if (!file) return false;
+        if (file.type && file.type.startsWith('image/')) return true;
+        return /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name || '');
+      });
+      const files = filesFromItems.length ? filesFromItems : filesFromFileList;
+
+      if (files.length > 0) {
+        const readAsDataUrl = (file: File): Promise<string> =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result ?? ''));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          });
+
+        const normalizeDataUrl = (dataUrl: string) => {
+          const s = String(dataUrl ?? '');
+          const commaIdx = s.indexOf(',');
+          if (commaIdx < 0) return s;
+          const head = s.slice(0, commaIdx + 1);
+          const payload = s.slice(commaIdx + 1).replace(/\s+/g, '');
+          return head + payload;
+        };
+
+        const isValidImageDataUrl = (dataUrl: string) => {
+          const s = String(dataUrl ?? '');
+          if (!/^data:image\//i.test(s)) return false;
+          const commaIdx = s.indexOf(',');
+          if (commaIdx < 0) return false;
+          const payload = s.slice(commaIdx + 1);
+          // Prevent inserting broken `data:image/...;base64,` (empty payload) images.
+          return payload.length > 0;
+        };
+
+        const dataUrls = await Promise.all(files.map(readAsDataUrl));
+        const valid = dataUrls
+          .map((src, index) => ({ src: normalizeDataUrl(src), index }))
+          .filter(({ src }) => isValidImageDataUrl(src));
+
+        if (valid.length === 0) {
+          // Fall through to HTML/text paste pipeline.
+        } else {
+          const markdownParts = valid.map(({ src, index }, outIndex) => {
+            const rawName = files[index]?.name ?? '';
+            const name = rawName ? rawName.replace(/\.[^.]+$/, '') : '';
+            const alt = (name || `pasted-image-${outIndex + 1}`).slice(0, 64);
+            return `![${alt}](${src})`;
+          });
+
+          let markdown = markdownParts.join('\n\n');
+
+          // Keep behavior consistent with text paste normalization.
+          if (anchorBlock.blockName === 'language-input')
+            markdown = markdown.replace(/\n/g, '');
+          else if (anchorBlock.blockName === 'table.cell.content')
+            markdown = markdown.replace(/\n/g, '<br/>');
+
+          const { start, end } = anchorBlock.getCursor()!;
+          const { text: content } = anchorBlock;
+
+          anchorBlock.text =
+            content.substring(0, start.offset) +
+            markdown +
+            content.substring(end.offset);
+          const offset = start.offset + markdown.length;
+          anchorBlock.setCursor(offset, offset, true);
+          return;
+        }
+      }
+    }
 
     const text = event.clipboardData.getData('text/plain');
     let html = event.clipboardData.getData('text/html');
