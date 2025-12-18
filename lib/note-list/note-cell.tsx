@@ -17,6 +17,9 @@ import * as S from '../state';
 import * as T from '../types';
 
 const IMAGE_LINE_ONLY_RE = /^\s*!\[([^\]]*)\]\(\s*([^)]+?)\s*\)\s*$/;
+const HTML_IMAGE_LINE_ONLY_RE = /^\s*<img\b[^>]*>\s*$/i;
+const HTML_IMAGE_SRC_RE = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+const HTML_IMAGE_ALT_RE = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
 const MAX_TITLE_THUMBNAIL_LINES = 4;
 
 const extractMarkdownImageSrc = (raw: string): string => {
@@ -31,6 +34,12 @@ const extractMarkdownImageSrc = (raw: string): string => {
   }
   // Otherwise, treat the first whitespace-delimited token as the URL.
   return trimmed.split(/\s+/)[0] ?? '';
+};
+
+const extractHtmlAttribute = (re: RegExp, s: string): string | null => {
+  const m = re.exec(String(s ?? ''));
+  const value = (m?.[1] ?? m?.[2] ?? m?.[3] ?? '').trim();
+  return value || null;
 };
 
 type OwnProps = {
@@ -134,17 +143,25 @@ export class NoteCell extends Component<Props> {
         if (candidateLines.length >= MAX_TITLE_THUMBNAIL_LINES) break;
       }
 
-      const imageMatch = candidateLines
-        .map((l) => IMAGE_LINE_ONLY_RE.exec(String(l)))
-        .find(Boolean) as RegExpExecArray | undefined;
+      let alt = 'Image';
+      let rawSrc = '';
+      for (const line of candidateLines) {
+        const md = IMAGE_LINE_ONLY_RE.exec(line);
+        if (md) {
+          alt = (md[1] ?? '').trim() || 'Image';
+          rawSrc = extractMarkdownImageSrc(md[2] ?? '').replace(/^<|>$/g, '');
+          break;
+        }
+        if (HTML_IMAGE_LINE_ONLY_RE.test(line)) {
+          const src = extractHtmlAttribute(HTML_IMAGE_SRC_RE, line);
+          if (!src) continue;
+          rawSrc = src.replace(/^<|>$/g, '');
+          alt = extractHtmlAttribute(HTML_IMAGE_ALT_RE, line) || alt;
+          break;
+        }
+      }
 
-      if (!imageMatch) return null;
-
-      const alt = (imageMatch[1] ?? '').trim() || 'Image';
-      const rawSrc = extractMarkdownImageSrc(imageMatch[2] ?? '').replace(
-        /^<|>$/g,
-        ''
-      );
+      if (!rawSrc) return null;
       const normalizedSrc = rawSrc.replace(/^(\.\/|\/)/, '');
 
       const resolveFn = window.electron?.resolveNoteAssetFileUrl;

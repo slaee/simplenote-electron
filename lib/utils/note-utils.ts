@@ -16,7 +16,15 @@ const isLowSurrogate = (c: number) => 0xdc00 <= c && c <= 0xdfff;
 
 const IMAGE_LINE_RE = /^!\[([^\]]*)\]\(([^)]+)\)/;
 const IMAGE_LINE_ONLY_RE = /^\s*!\[[^\]]*\]\([^)]+\)\s*$/;
+const HTML_IMAGE_LINE_ONLY_RE = /^\s*<img\b[^>]*>\s*$/i;
+const HTML_IMAGE_ALT_RE = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
 const HEADING_RE = /^\s*#{1,6}\s+(.*)$/;
+
+const extractHtmlAttribute = (re: RegExp, s: string): string | null => {
+  const m = re.exec(String(s ?? ''));
+  const value = (m?.[1] ?? m?.[2] ?? m?.[3] ?? '').trim();
+  return value || null;
+};
 
 const normalizeTitleCandidate = (line: string): string => {
   const trimmed = String(line ?? '').trim();
@@ -34,7 +42,7 @@ const findTitleLineIndex = (content: string): number => {
     const trimmed = String(lines[i]).trim();
     if (!trimmed) continue;
     const imgMatch = IMAGE_LINE_RE.exec(trimmed);
-    if (imgMatch) {
+    if (imgMatch || HTML_IMAGE_LINE_ONLY_RE.test(trimmed)) {
       if (firstImageIdx === null) firstImageIdx = i;
       continue;
     }
@@ -81,6 +89,13 @@ export const getTitle = (content) => {
     const imgMatch = IMAGE_LINE_RE.exec(trimmed);
     if (imgMatch) {
       const alt = (imgMatch[1] ?? '').trim();
+      if (!pendingImageAlt && alt) pendingImageAlt = alt;
+      // Keep looking for real text.
+      continue;
+    }
+
+    if (HTML_IMAGE_LINE_ONLY_RE.test(trimmed)) {
+      const alt = extractHtmlAttribute(HTML_IMAGE_ALT_RE, trimmed);
       if (!pendingImageAlt && alt) pendingImageAlt = alt;
       // Keep looking for real text.
       continue;
@@ -155,7 +170,8 @@ const getPreview = (content: string, searchQuery?: string) => {
     if (lines >= 3) break;
     const line = allLines[i].trim();
     if (!line) continue;
-    if (IMAGE_LINE_ONLY_RE.test(line)) continue;
+    if (IMAGE_LINE_ONLY_RE.test(line) || HTML_IMAGE_LINE_ONLY_RE.test(line))
+      continue;
     preview += line + '\n';
     lines++;
   }

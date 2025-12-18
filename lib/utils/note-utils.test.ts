@@ -28,6 +28,17 @@ describe('noteTitleAndPreview', () => {
     });
   });
 
+  it('should skip an HTML image line when generating the title/preview', () => {
+    note.content =
+      '<img src="assets/pic.png" alt="Example" />\nMy title\nThe preview';
+    note.systemTags = [];
+    const result = noteTitleAndPreview(note);
+    expect(result).toEqual({
+      title: 'My title',
+      preview: 'The preview',
+    });
+  });
+
   it('should use the first non-empty line as the title', () => {
     note.content = '\n\n   \nMy title\nThe preview';
     note.systemTags = [];
