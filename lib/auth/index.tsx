@@ -4,7 +4,7 @@ import cryptoRandomString from '../utils/crypto-random-string';
 import { get } from 'lodash';
 import { isDev } from '../../desktop/env';
 import MailIcon from '../icons/mail';
-import SimplenoteLogo from '../icons/simplenote';
+import CurnoteLogo from '../icons/curnote';
 import Spinner from '../components/spinner';
 import { isElectron, isMac } from '../utils/platform';
 import { viewExternalUrl } from '../utils/url-utils';
@@ -92,11 +92,11 @@ export class Auth extends Component<Props> {
       <>
         Could not request account creation. Please try again or
         <a
-          href="mailto:support@simplenote.com?subject=Simplenote%20Support"
+          href="mailto:support@curnote.com?subject=Curnote%20Support"
           onClick={(event) => {
             event.preventDefault();
             viewExternalUrl(
-              'mailto:support@simplenote.com?subject=Simplenote%20Support'
+              'mailto:support@curnote.com?subject=Curnote%20Support'
             );
           }}
         >
@@ -129,11 +129,11 @@ export class Auth extends Component<Props> {
               <a
                 onClick={(event) => {
                   event.preventDefault();
-                  viewExternalUrl('mailto:support@simplenote.com');
+                  viewExternalUrl('mailto:support@curnote.com');
                 }}
-                href="mailto:support@simplenote.com"
+                href="mailto:support@curnote.com"
               >
-                support@simplenote.com
+                support@curnote.com
               </a>{' '}
               for help.
             </p>
@@ -213,7 +213,7 @@ export class Auth extends Component<Props> {
     return (
       <div className={mainClasses}>
         {isElectron && isMac && <div className="login__draggable-area" />}
-        <SimplenoteLogo />
+        <CurnoteLogo />
         <form className="login__form" onSubmit={this.onSubmit}>
           <h1>{headerLabel}</h1>
           {!this.state.onLine && (
@@ -228,7 +228,7 @@ export class Auth extends Component<Props> {
               <a
                 className="login__reset"
                 href={
-                  'https://app.simplenote.com/reset/?email=' +
+                  'https://app.curnote.com/reset/?email=' +
                   encodeURIComponent(get(this.usernameInput, 'value'))
                 }
                 target="_blank"
@@ -251,7 +251,7 @@ export class Auth extends Component<Props> {
               <a
                 className="login__reset"
                 href={
-                  'https://app.simplenote.com/account/verify-email/' +
+                  'https://app.curnote.com/account/verify-email/' +
                   btoa(get(this.usernameInput, 'value'))
                 }
                 target="_blank"
@@ -273,7 +273,7 @@ export class Auth extends Component<Props> {
               <a
                 className="login__reset"
                 href={
-                  'https://app.simplenote.com/reset/?email=' +
+                  'https://app.curnote.com/reset/?email=' +
                   encodeURIComponent(get(this.usernameInput, 'value'))
                 }
                 target="_blank"
@@ -388,7 +388,7 @@ export class Auth extends Component<Props> {
           {!isCreatingAccount && usePassword && (
             <a
               className="login__forgot"
-              href="https://app.simplenote.com/forgot/"
+              href="https://app.curnote.com/forgot/"
               target="_blank"
               rel="noopener noreferrer"
               onClick={this.onForgot}
@@ -409,10 +409,10 @@ export class Auth extends Component<Props> {
             <div className="terms">
               By creating an account you agree to our
               <a
-                href="https://simplenote.com/terms/"
+                href="https://curnote.com/terms/"
                 onClick={(event) => {
                   event.preventDefault();
-                  viewExternalUrl('https://simplenote.com/terms/');
+                  viewExternalUrl('https://curnote.com/terms/');
                 }}
               >
                 Terms of Service
@@ -588,7 +588,7 @@ export class Auth extends Component<Props> {
           );
         case '2':
           return this.authError(
-            'Please confirm your account with the confirmation email before signing in to Simplenote.'
+            'Please confirm your account with the confirmation email before signing in to Curnote.'
           );
         default:
           return this.authError('An error was encountered while signing in.');

@@ -59,7 +59,7 @@ export class NoteActions extends Component<Props> {
 
   getNoteLink = (note: T.Note, noteId: T.EntityId) => {
     const { title } = getNoteTitleAndPreview(note);
-    return `[${title}](simplenote://note/${noteId})`;
+    return `[${title}](curnote://note/${noteId})`;
   };
 
   getPublishURL = (url: string | undefined) => {

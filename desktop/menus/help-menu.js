@@ -14,7 +14,7 @@ const buildHelpMenu = (mainWindow, isAuthenticated) => {
     {
       label: 'Help && &Support',
       accelerator: platform.isLinux() ? 'F1' : null,
-      click: () => shell.openExternal('https://simplenote.com/help'),
+      click: () => shell.openExternal('https://curnote.com/help'),
     },
     {
       label: '&Keyboard Shortcuts',

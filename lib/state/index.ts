@@ -68,7 +68,7 @@ export const makeStore = (
         },
         composeEnhancers(
           persistState('settings', {
-            key: 'simpleNote',
+            key: 'curNote',
             slicer: (path) => (state) => ({
               // Omit property from persisting
               [path]: omit(state[path], [

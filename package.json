@@ -1,15 +1,15 @@
 {
-  "name": "simplenote",
-  "description": "Simplenote is an easy way to keep notes, lists, ideas and more. Your notes stay in sync with all your devices for free.",
+  "name": "curnote",
+  "description": "Curnote is an easy way to keep notes, lists, ideas and more. Your notes stay in sync with all your devices for free.",
   "author": {
     "name": "Automattic, Inc.",
-    "email": "support@simplenote.com"
+    "email": "support@curnote.com"
   },
-  "productName": "Simplenote",
+  "productName": "Curnote",
   "version": "2.24.0-beta.1",
   "main": "desktop/index.js",
   "license": "GPL-2.0",
-  "homepage": "https://simplenote.com",
+  "homepage": "https://curnote.com",
   "scripts": {
     "dev": "make dev",
     "start": "make start NODE_ENV=development",
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Automattic/simplenote-electron.git"
+    "url": "git://github.com/Automattic/curnote-electron.git"
   },
   "engines": {
     "node": ">= 12.14.1",

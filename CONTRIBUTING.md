@@ -19,7 +19,7 @@ import * as A from '../state/action-types';
 import * as S from '../state';
 ```
 
-`types` contains app-wide type definitions including those for the Simplenote data models, the UI behaviors, and common language/platform helpers.
+`types` contains app-wide type definitions including those for the Curnote data models, the UI behaviors, and common language/platform helpers.
 
 ```ts
 import * as T from '../types';
@@ -136,38 +136,41 @@ Use the `Reducer` helper type to define the type of the property being added to 
 import * as A from '../action-types';
 import * as T from '../../types';
 
-const listMode = A.Reducer<T.ListDisplayMode> = (state = 'compact', action) => {
-	switch (action.type) {
-		case 'SET_LIST_DISPLAY_MODE':
-			return action.displayMode;
-		default:
-			return state;
-	}
-}
+const listMode = (A.Reducer<T.ListDisplayMode> = (
+  state = 'compact',
+  action
+) => {
+  switch (action.type) {
+    case 'SET_LIST_DISPLAY_MODE':
+      return action.displayMode;
+    default:
+      return state;
+  }
+});
 
 const loginAttempts: A.Reducer<number> = (state = 0, action) => {
-	switch (action.type) {
-		case 'LOGIN_SUBMIT':
-			return state + 1;
-		case 'SET_AUTH':
-			return action.status === 'authorized' ? 0 : state;
-		default:
-			return state;
-	}
-}
+  switch (action.type) {
+    case 'LOGIN_SUBMIT':
+      return state + 1;
+    case 'SET_AUTH':
+      return action.status === 'authorized' ? 0 : state;
+    default:
+      return state;
+  }
+};
 
 const selectedNote: A.Reducer<T.EntityId | null> = (state = null, action) => {
-	switch (action.type) {
-		case 'CREATE_NOTE':
-			return action.noteId;
+  switch (action.type) {
+    case 'CREATE_NOTE':
+      return action.noteId;
 
-		case 'TRASH_NOTE':
-			return null;
+    case 'TRASH_NOTE':
+      return null;
 
-		default:
-			return state;
-	}
-}
+    default:
+      return state;
+  }
+};
 ```
 
 ### Creating Action Types

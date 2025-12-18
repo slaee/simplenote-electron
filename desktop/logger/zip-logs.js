@@ -19,7 +19,7 @@ const log = require('.')('desktop:get-logs');
 const logPath = path.join(
   (app && app.getPath('appData')) || '',
   'logs',
-  'simplenote-main.log'
+  'curnote-main.log'
 );
 
 const pad = (n) => `${n}`.padStart(2, '0');
@@ -55,7 +55,7 @@ module.exports = function (window) {
           '\n\n' +
           `${path.basename(file)}`,
         detail:
-          'For help with an issue, please contact support@simplenote.com and share your logs.',
+          'For help with an issue, please contact support@curnote.com and share your logs.',
       });
     };
 
@@ -66,7 +66,7 @@ module.exports = function (window) {
       title: 'Error getting application logs',
       message: 'Error getting application logs',
       detail:
-        'Please contact support@simplenote.com and mention the error details below:' +
+        'Please contact support@curnote.com and mention the error details below:' +
         '\n\n' +
         error.stack +
         '\n\n' +
@@ -77,7 +77,7 @@ module.exports = function (window) {
   try {
     const timestamp = localDateTime();
     const desktop = app.getPath('desktop');
-    const dst = path.join(desktop, `simplenote-${timestamp}.zip`);
+    const dst = path.join(desktop, `curnote-${timestamp}.zip`);
     return zipContents(logPath, dst, onZipped(dst));
   } catch (error) {
     log.error('Failed to zip logs: ', error);

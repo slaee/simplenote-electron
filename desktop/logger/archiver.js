@@ -22,7 +22,7 @@ module.exports = {
   zipContents: (logPath, dst, onZipped) => {
     const zip = new JSZip();
     zip.file(
-      'simplenote.log',
+      'curnote.log',
       new Promise((resolve, reject) =>
         fs.readFile(logPath, (error, data) => {
           if (error) {

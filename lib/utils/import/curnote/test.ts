@@ -1,5 +1,5 @@
-import SimplenoteImporter, { convertModificationDates } from './';
-import CoreImporter from '../';
+import CurnoteImporter, { convertModificationDates } from '.';
+import CoreImporter from '..';
 jest.mock('../');
 
 // Mock FileReader
@@ -10,11 +10,11 @@ global.FileReader = jest.fn(() => ({
   onload: null,
 })) as any;
 
-describe('SimplenoteImporter', () => {
+describe('CurnoteImporter', () => {
   let importer;
 
   beforeEach(() => {
-    importer = new SimplenoteImporter(() => {});
+    importer = new CurnoteImporter(() => {});
     importer.emit = jest.spyOn(importer, 'emit');
     CoreImporter.mockClear();
     CoreImporter.mockImplementation(function () {
@@ -100,7 +100,7 @@ describe('SimplenoteImporter', () => {
       expect(importer.emit).toHaveBeenCalledWith(
         'status',
         'error',
-        'Invalid Simplenote JSON format.'
+        'Invalid Curnote JSON format.'
       );
     });
 

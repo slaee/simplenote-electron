@@ -28,7 +28,7 @@ const AccountPanel: FunctionComponent<Props> = ({
   toggleAnalytics,
 }) => {
   const onEditAccount = () => {
-    viewExternalUrl(`https://app.simplenote.com/settings/`);
+    viewExternalUrl(`https://app.curnote.com/settings/`);
   };
 
   return (
@@ -56,7 +56,7 @@ const AccountPanel: FunctionComponent<Props> = ({
             title="Privacy"
             slug="shareAnalytics"
             activeSlug={analyticsEnabled ? 'enabled' : ''}
-            description="Help us improve Simplenote by sharing usage data with our analytics tool."
+            description="Help us improve Curnote by sharing usage data with our analytics tool."
             onChange={toggleAnalytics}
             learnMoreURL="https://automattic.com/cookies"
             renderer={ToggleGroup}

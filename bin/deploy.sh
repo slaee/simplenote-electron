@@ -14,20 +14,20 @@ case $1 in
 
   "staging")
     COMMIT_BRANCH='webapp-staging'
-    WEB_APP_URL='https://simplenote-staging.go-vip.net'
-    APP_ENGINE_URL='https://staging.simplenote.com'
+    WEB_APP_URL='https://curnote-staging.go-vip.net'
+    APP_ENGINE_URL='https://staging.curnote.com'
     ;;
 
   "develop")
     COMMIT_BRANCH='webapp-develop'
-    WEB_APP_URL='https://simplenote-develop.go-vip.net'
-    APP_ENGINE_URL='https://develop.simplenote.com'
+    WEB_APP_URL='https://curnote-develop.go-vip.net'
+    APP_ENGINE_URL='https://develop.curnote.com'
     ;;
 
   "production")
     COMMIT_BRANCH='webapp'
-    WEB_APP_URL='https://simplenote.go-vip.co'
-    APP_ENGINE_URL='https://app.simplenote.com'
+    WEB_APP_URL='https://curnote.go-vip.co'
+    APP_ENGINE_URL='https://app.curnote.com'
     ;;
 
   *)
@@ -43,7 +43,7 @@ npm install --legacy-peer-deps
 mv config-local.json config-local.original.json
 
 # Setup config
-json_string=$(printf '{"app_id": "chalk-bump-f49", "app_key": "12345", "development": false, "wpcc_client_id": "0", "wpcc_redirect_url": "https://simplenote.com", "is_app_engine": true, "web_app_url": "%s", "app_engine_url": "%s"}' "$WEB_APP_URL" "$APP_ENGINE_URL")
+json_string=$(printf '{"app_id": "chalk-bump-f49", "app_key": "12345", "development": false, "wpcc_client_id": "0", "wpcc_redirect_url": "https://curnote.com", "is_app_engine": true, "web_app_url": "%s", "app_engine_url": "%s"}' "$WEB_APP_URL" "$APP_ENGINE_URL")
 echo "$json_string" > config-local.json
 
 # Clean up old builds

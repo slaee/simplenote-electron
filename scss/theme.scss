@@ -1,7 +1,7 @@
 @use 'variables' as *;
 
 /*
- * Regenerate the Simplenote Tasks font with the following script.
+ * Regenerate the Curnote Tasks font with the following script.
  * Download the SVG task icons from the Simplecons repo
  *
  * // gen.js
@@ -13,17 +13,17 @@
  * 		'svg/task-checked.svg'
  * 	],
  * 	dest: 'font/',
- * 	fontName: 'Simplenote Tasks',
+ * 	fontName: 'Curnote Tasks',
  * 	types: ['woff'],
  * 	startCodepoint: 0xE000,
  * 	descent: 3, // needed to vertically align the tasks
  * }, () => {} );
  *
  * Once the script finishes copy the output here
- * ~$ node gen.js && cat font/Simplenote\ Tasks.woff | base64 | pbcopy
+ * ~$ node gen.js && cat font/Curnote\ Tasks.woff | base64 | pbcopy
  */
 @font-face {
-  font-family: 'Simplenote Tasks';
+  font-family: 'Curnote Tasks';
   src: url('data:application/x-font-woff;charset=utf8-8;base64,d09GRgABAAAAAAQgAAsAAAAABrwAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAABHU1VCAAABCAAAADsAAABUIIslek9TLzIAAAFEAAAAPwAAAFYpRjXwY21hcAAAAYQAAABPAAABfmBD5KlnbHlmAAAB1AAAAGAAAACINxFu0WhlYWQAAAI0AAAAMAAAADYV/A6waGhlYQAAAmQAAAAcAAAAJAAtABlobXR4AAACgAAAAAwAAAAMADAAAGxvY2EAAAKMAAAACAAAAAgAIABEbWF4cAAAApQAAAAeAAAAIAEPACJuYW1lAAACtAAAAT8AAAJzQ72hRHBvc3QAAAP0AAAAKgAAAEeHVaHleJxjYGRgYOBiMGCwY2BycfMJYeDLSSzJY5BiYGGAAJA8MpsxJzM9kYEDxgPKsYBpDiBmg4gCACY7BUgAeJxjYGQQYJzAwMrAwMDPIAAkmaE0NwMjAxsDAxMDKzMDVhCQ5prC4PCA4QEjg+j/v0CFogwglYwgOQC9ZgaRAHic7ZCxDYAwDATPiaFAjEFBwTBUzM8mydtmDF66k/7lysACdHEJB3swIrdWy72z5e4ceeOxvzaGTFjd001a+bOnz6+1+FNRnytoE7boCy0AeJxjYGJg+P+fQYxBiIGFQYSBwdxQVNnUXFmJTZZRRMya0cjMltFETZiPj48RCECEAB8fE4QFIhgYEPr5GUSB+tG0squbi5uLC8O1c7EwMrMzCiFM4GMFCjAxAAC/8AuCeJxjYGRgYADiawd0bOP5bb4ycDNIAEUYbidnHEXQ//8ziDEIAbkcDEwgUQA3/ArKeJxjYGRgYBD9/xdISjCAgBgDIwMqYAYAQWsCRQAAAAAAGAAAABgAAAAAAAAAIABEeJxjYGRgYGBmEGNgYgABEMkFhAwM/8F8BgAK7wEyAAB4nIWOy2rCQBSG/3grVWgLQrsrs2oXhXjZFFx2oeuquI860WiSCZNRELrvso/SJ3Dbt+ijFPqbHhCkYIZkvvNfDgFwgy94ODweGcIlXHD64zLpTrhCfhSuooFn4Rqu8SJcxxNehRto4o0bvMolFYUP4RKu8Clcpr4XrpC/hau4xY9wDfdeU7iOidcRbuDBex9FSRbr1DitxkG+zod6sYkDeyqfzhNt88ikquO3j1bhDHSqbeD0XE13Kt8uus6FKrQmUX2TOh3HRmXWrPTM+Uvnsl6rFYruz0yCESIkyBBDI4WB460wRoAca75Dzgts6AewZ9Pn/Alnyzuil9LpwEf739axMyjUQy8onDl7U+z4zbHlv3WpOoScQ2YMNyn0i/2HdMxjqGSFt6Iyo+5jWbQy9NDiCU/yPlPc9As0/naZAHicY2BiwA+YGZkYmRlZGPhKEouzdUvzkjNSk7NTU3jAXCiHgQEAqZ8KXQAA')
     format('woff2');
   unicode-range: U+E000-E001;
@@ -71,7 +71,7 @@ span[dir='ltr'] {
   color: var(--primary-color);
   height: 100%;
   width: 100%;
-  font-family: 'Simplenote Tasks', $sans, sans-serif;
+  font-family: 'Curnote Tasks', $sans, sans-serif;
 
   .slider {
     border-radius: 10px;
@@ -112,7 +112,7 @@ body[data-theme='dark'] .muya-editor-root * {
   color: inherit !important;
 }
 
-// Align Muya editor width with Simplenote's line length setting.
+// Align Muya editor width with Curnote's line length setting.
 // Muya defaults to max-width: 800px with 50px side padding, which creates
 // very large gutters next to the note list.
 .muya-editor-root {

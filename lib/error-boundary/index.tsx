@@ -9,7 +9,7 @@ import * as S from '../state';
 import * as T from '../types';
 import * as selectors from '../state/selectors';
 
-const helpEmail = 'mailto:support@simplenote.com?subject=Simplenote%20Support';
+const helpEmail = 'mailto:support@curnote.com?subject=Curnote%20Support';
 
 type ErrorMessageProps = {
   allowAnalytics?: boolean;
@@ -54,7 +54,7 @@ const ErrorMessage: FunctionComponent<ErrorMessageProps> = ({
             viewExternalUrl(helpEmail);
           }}
         >
-          support@simplenote.com
+          support@curnote.com
         </a>
         .
       </p>

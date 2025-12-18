@@ -32,7 +32,7 @@ If (Test-Path $certPath) {
 
 # Workaround for CI not finding the certificate.
 # See failure such as
-# https://buildkite.com/automattic/simplenote-electron/builds/71#01900b28-9508-4bfe-bc80-63464afeaa3e/292-567
+# https://buildkite.com/automattic/curnote-electron/builds/71#01900b28-9508-4bfe-bc80-63464afeaa3e/292-567
 Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\LocalMachine\Root -Password (ConvertTo-SecureString -String $env:WINDOWS_CODE_SIGNING_CERT_PASSWORD -AsPlainText -Force)
 
 Write-Host "--- :windows: Installing make"

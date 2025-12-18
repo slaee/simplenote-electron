@@ -75,7 +75,7 @@ export class ShareDialog extends Component<Props> {
           <div className="tab-panels__column">
             <div className="settings-group">
               <p>
-                Add an email address of another Simplenote user to share a note.
+                Add an email address of another Curnote user to share a note.
                 You&apos;ll both be able to edit and view the note.
               </p>
               <div className="settings-items">

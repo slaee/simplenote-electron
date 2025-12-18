@@ -33,7 +33,7 @@ class ManualUpdater extends Updater {
   async ping() {
     const options = {
       headers: {
-        'User-Agent': `Simplenote/${app.getVersion()}`,
+        'User-Agent': `Curnote/${app.getVersion()}`,
       },
     };
 

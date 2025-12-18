@@ -28,8 +28,8 @@ class ImportDialog extends Component<Props> {
         : '.txt,.md,.zip,.json',
       title: `Select the notes you'd like to import.`,
       instructions: isElectron
-        ? 'Accepted file formats: Simplenote (JSON, ZIP), Text (TXT, MD) and Evernote (ENEX).'
-        : 'Accepted file formats: Simplenote (JSON, ZIP) and Text (TXT, MD).',
+        ? 'Accepted file formats: Curnote (JSON, ZIP), Text (TXT, MD) and Evernote (ENEX).'
+        : 'Accepted file formats: Curnote (JSON, ZIP) and Text (TXT, MD).',
       multiple: true,
     };
 

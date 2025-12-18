@@ -1,7 +1,7 @@
 import React, { Component, createRef } from 'react';
 import { connect } from 'react-redux';
 import NoteContentEditor from '../note-content-editor';
-import SimplenoteCompactLogo from '../icons/simplenote-compact';
+import CurnoteCompactLogo from '../icons/curnote-compact';
 
 import * as S from '../state';
 import * as T from '../types';
@@ -41,7 +41,7 @@ export class NoteDetail extends Component<Props> {
       <div className="note-detail-wrapper">
         {!openedNote ? (
           <div className="note-detail-placeholder">
-            <SimplenoteCompactLogo />
+            <CurnoteCompactLogo />
           </div>
         ) : (
           <NoteContentEditor

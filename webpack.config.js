@@ -137,7 +137,7 @@ module.exports = () => {
         favicon: process.cwd() + '/resources/images/favicon.ico',
         'node-version': process.version,
         template: 'index.ejs',
-        title: 'Simplenote',
+        title: 'Curnote',
       }),
       new MiniCssExtractPlugin({
         filename: isDevMode ? '[name].css' : '[name].[fullhash].css',

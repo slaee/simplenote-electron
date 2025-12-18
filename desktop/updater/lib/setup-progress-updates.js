@@ -9,7 +9,7 @@ const progressBarBlue = '#4895d9';
  */
 const setupProgressUpdates = ({ updater, willAutoDownload }) => {
   let progressBar;
-  const title = 'Update Simplenote';
+  const title = 'Update Curnote';
   const style = {
     bar: {
       height: '8px',
@@ -33,7 +33,7 @@ const setupProgressUpdates = ({ updater, willAutoDownload }) => {
     updater.removeListener('update-not-available', notifyNoUpdate);
     closeProgressAndShowMessage({
       message: 'You’re up to date!',
-      detail: `Simplenote ${app.getVersion()} is currently the newest version available.`,
+      detail: `Curnote ${app.getVersion()} is currently the newest version available.`,
     });
   };
 

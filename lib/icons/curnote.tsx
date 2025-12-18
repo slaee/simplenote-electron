@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function SimplenoteLogo() {
+export default function CurnoteLogo() {
   return (
     <svg className="logo" width="96" height="96" viewBox="0 0 176 176">
       <g fillRule="evenodd" clipRule="evenodd">

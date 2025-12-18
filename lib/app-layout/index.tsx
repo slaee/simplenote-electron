@@ -7,7 +7,7 @@ import NavigationBar from '../navigation-bar';
 import NoteToolbar from '../note-toolbar';
 import RevisionSelector from '../revision-selector';
 import SearchField from '../search-field';
-import SimplenoteCompactLogo from '../icons/simplenote-compact';
+import CurnoteCompactLogo from '../icons/curnote-compact';
 import NoteRevisions from '../note-revisions';
 import TransitionDelayEnter from '../components/transition-delay-enter';
 import actions from '../state/actions';
@@ -105,7 +105,7 @@ export class AppLayout extends Component<Props> {
     const placeholder = (
       <TransitionDelayEnter delay={1000}>
         <div className="app-layout__placeholder">
-          <SimplenoteCompactLogo />
+          <CurnoteCompactLogo />
         </div>
       </TransitionDelayEnter>
     );

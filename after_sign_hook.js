@@ -11,15 +11,12 @@ module.exports = async function (params) {
   const appStoreConnectKeyPath = path.join(
     process.env.HOME,
     '.configure',
-    'simplenote-electron',
+    'curnote-electron',
     'secrets',
     'app_store_connect_api_key.p8'
   );
 
-  const envPath = path.join(
-    process.env.HOME,
-    '.a8c-apps/simplenote-electron.env'
-  );
+  const envPath = path.join(process.env.HOME, '.a8c-apps/curnote-electron.env');
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
   } else {
@@ -54,7 +51,7 @@ module.exports = async function (params) {
   }
 
   // Same appId in electron-builder.
-  let appId = 'com.automattic.simplenote';
+  let appId = 'com.automattic.curnote';
 
   let appPath = params.appOutDir
     ? path.join(

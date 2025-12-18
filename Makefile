@@ -21,13 +21,13 @@ ELECTRON_VERSION := $(shell node -e "console.log(require('./package.json').devDe
 RED=`tput setaf 1`
 RESET=`tput sgr0`
 
-SIMPLENOTE_JS := $(THIS_DIR)/dist/app.js
-SIMPLENOTE_CHANGES_STD := `find "$(THIS_DIR)" -newer "$(SIMPLENOTE_JS)" \( -name "*.js" -o -name "*.jsx" -o -name "*.json" -o -name "*.scss" -o -name "*.ts" -o -name "*.tsx" \) -type f -print -quit | grep -v .min. | wc -l`
-SIMPLENOTE_BRANCH = $(shell git --git-dir .git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+CURNOTE_JS := $(THIS_DIR)/dist/app.js
+CURNOTE_CHANGES_STD := `find "$(THIS_DIR)" -newer "$(CURNOTE_JS)" \( -name "*.js" -o -name "*.jsx" -o -name "*.json" -o -name "*.scss" -o -name "*.ts" -o -name "*.tsx" \) -type f -print -quit | grep -v .min. | wc -l`
+CURNOTE_BRANCH = $(shell git --git-dir .git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 
 
 ##############
-# SIMPLENOTE #
+# CURNOTE #
 ##############
 
 # Node environment
@@ -84,7 +84,7 @@ test:
 .PHONY: build
 build:
 ifeq ($(SKIP_BUILD),false)
-	@echo "Building Simplenote Desktop on branch $(RED)$(SIMPLENOTE_BRANCH)$(RESET)"
+	@echo "Building Curnote Desktop on branch $(RED)$(CURNOTE_BRANCH)$(RESET)"
 
 # IS_PRODUCTION is a helper var for the inline conditional in `build-app`
 ifeq ($(NODE_ENV),production)
@@ -102,17 +102,17 @@ build-app:
 
 .PHONY: build-if-not-exists
 build-if-not-exists: config.json
-	@if [ -f $(SIMPLENOTE_JS) ]; then \
-		echo "File $(SIMPLENOTE_JS) exists, skipping build."; \
+	@if [ -f $(CURNOTE_JS) ]; then \
+		echo "File $(CURNOTE_JS) exists, skipping build."; \
 		true; \
 	else \
-		echo "File $(SIMPLENOTE_JS) does not exist, running build."; \
+		echo "File $(CURNOTE_JS) does not exist, running build."; \
 		make build; \
 	fi
 
 .PHONY: build-if-changed
 build-if-changed: build-if-not-exists
-	@if [ $(SIMPLENOTE_CHANGES_STD) -eq 0 ]; then \
+	@if [ $(CURNOTE_CHANGES_STD) -eq 0 ]; then \
 		echo "No changes detected, skipping build."; \
 		true; \
 	else \
@@ -205,7 +205,7 @@ lint-js:
 # 'private' task for echoing instructions
 _pwd_prompt:
 ifeq ($(strip $(CI)),)
-	@echo "Check the secret store for Simplenote!"
+	@echo "Check the secret store for Curnote!"
 else
 	@echo "Use input disabled because running in CI (CI env var set)"
 endif

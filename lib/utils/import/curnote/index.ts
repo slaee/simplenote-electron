@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
-import CoreImporter from '../';
+import CoreImporter from '..';
 import { endsWith, isEmpty } from 'lodash';
 
 import * as T from '../../../types';
 
-class SimplenoteImporter extends EventEmitter {
+class CurnoteImporter extends EventEmitter {
   constructor(
     addNote: (note: T.Note) => any,
     options,
@@ -73,7 +73,7 @@ class SimplenoteImporter extends EventEmitter {
     }
 
     if (!dataObj.activeNotes || !Array.isArray(dataObj.activeNotes)) {
-      this.emit('status', 'error', 'Invalid Simplenote JSON format.');
+      this.emit('status', 'error', 'Invalid Curnote JSON format.');
       return;
     }
 
@@ -86,7 +86,7 @@ class SimplenoteImporter extends EventEmitter {
     coreImporter.importNotes(processedNotes, this.options).then(() => {
       this.emit('status', 'complete', noteCount);
       this.recordEvent('importer_import_completed', {
-        source: 'simplenote',
+        source: 'curnote',
         note_count: noteCount,
       });
     });
@@ -142,7 +142,7 @@ class SimplenoteImporter extends EventEmitter {
 
 export function convertModificationDates(notes) {
   return notes.map(({ lastModified, ...note }) => {
-    // Account for Simplenote's exported `lastModified` date
+    // Account for Curnote's exported `lastModified` date
     let modificationDate = note.modificationDate || lastModified;
 
     // Convert to timestamp
@@ -157,4 +157,4 @@ export function convertModificationDates(notes) {
   });
 }
 
-export default SimplenoteImporter;
+export default CurnoteImporter;

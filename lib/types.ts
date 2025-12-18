@@ -1,5 +1,5 @@
 ///////////////////////////////////////
-// Simplenote Data Model
+// Curnote Data Model
 ///////////////////////////////////////
 
 export type EntityId = Brand<string, 'EntityId'>;

@@ -256,7 +256,7 @@ export const initSimperium =
     // new NoteDoctor(store, noteQueue);
 
     window.addEventListener('storage', (event) => {
-      if (event.key === 'simplenote_logout') {
+      if (event.key === 'curnote_logout') {
         stopSyncing();
         client.end();
         logout();
@@ -458,7 +458,7 @@ export const initSimperium =
           }
 
           stopSyncing();
-          localStorage.setItem('simplenote_logout', Math.random().toString());
+          localStorage.setItem('curnote_logout', Math.random().toString());
           client.end();
           logout();
           return result;
@@ -466,7 +466,7 @@ export const initSimperium =
 
         case 'REALLY_LOG_OUT':
           stopSyncing();
-          localStorage.setItem('simplenote_logout', Math.random().toString());
+          localStorage.setItem('curnote_logout', Math.random().toString());
           client.end();
           logout();
           return result;

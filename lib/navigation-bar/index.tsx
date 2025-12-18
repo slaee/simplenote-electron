@@ -55,7 +55,7 @@ export class NavigationBar extends Component<Props> {
     }
   };
 
-  onHelpClicked = () => viewExternalUrl('http://simplenote.com/help');
+  onHelpClicked = () => viewExternalUrl('http://curnote.com/help');
 
   onSelectTrash = () => {
     this.props.selectTrash();

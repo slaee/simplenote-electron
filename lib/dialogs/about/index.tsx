@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import SimplenoteLogo from '../../icons/simplenote';
+import CurnoteLogo from '../../icons/curnote';
 import CrossIcon from '../../icons/cross';
 import TopRightArrowIcon from '../../icons/arrow-top-right';
 import Dialog from '../../dialog';
@@ -22,9 +22,9 @@ export class AboutDialog extends Component<Props> {
       <div className="about">
         <Dialog hideTitleBar onDone={closeDialog} title="About">
           <div className="about-top">
-            <SimplenoteLogo />
+            <CurnoteLogo />
 
-            <h1>Simplenote</h1>
+            <h1>Curnote</h1>
             <small>Version {appVersion}</small>
           </div>
 
@@ -32,31 +32,31 @@ export class AboutDialog extends Component<Props> {
             <li>
               <a
                 target="_blank"
-                href="https://simplenote.com/blog/"
+                href="https://curnote.com/blog/"
                 rel="noopener noreferrer"
               >
                 <span className="about-links-title">Blog</span>
                 <br />
-                simplenote.com/blog/
+                curnote.com/blog/
               </a>
               <TopRightArrowIcon />
             </li>
             <li>
               <a
                 target="_blank"
-                href="https://twitter.com/simplenoteapp"
+                href="https://twitter.com/curnoteapp"
                 rel="noopener noreferrer"
               >
                 <span className="about-links-title">Twitter</span>
                 <br />
-                @simplenoteapp
+                @curnoteapp
               </a>
               <TopRightArrowIcon />
             </li>
             <li>
               <a
                 target="_blank"
-                href="https://github.com/Automattic/simplenote-electron"
+                href="https://github.com/Automattic/curnote-electron"
                 rel="noopener noreferrer"
               >
                 <span className="about-links-title">Contribute</span>
@@ -83,7 +83,7 @@ export class AboutDialog extends Component<Props> {
             <p>
               <a
                 target="_blank"
-                href="https://simplenote.com/privacy/"
+                href="https://curnote.com/privacy/"
                 rel="noopener noreferrer"
               >
                 Privacy Policy
@@ -91,7 +91,7 @@ export class AboutDialog extends Component<Props> {
               &nbsp;&bull;&nbsp;{' '}
               <a
                 target="_blank"
-                href="https://simplenote.com/terms/"
+                href="https://curnote.com/terms/"
                 rel="noopener noreferrer"
               >
                 Terms of Service

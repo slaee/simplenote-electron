@@ -9,13 +9,13 @@ const fs = require('fs');
 const { pathToFileURL, fileURLToPath } = require('url');
 const sanitizeFilename = require('sanitize-filename');
 
-const NOTES_ROOT_NAME = 'SimpleNotes';
-const META_DIR_NAME = '.simplenote';
+const NOTES_ROOT_NAME = 'CurNotes';
+const META_DIR_NAME = '.curnote';
 const META_FILE_NAME = 'store.json';
 const REVISIONS_FILE_NAME = 'revisions.json';
 
 const getNotesRoot = () => {
-  const documents = ipcRenderer.sendSync('simplenote:getPath', 'documents');
+  const documents = ipcRenderer.sendSync('curnote:getPath', 'documents');
   if (!documents) {
     throw new Error('Could not resolve documents path from main process');
   }
@@ -180,7 +180,7 @@ const validChannels = [
 
 const electronAPI = {
   confirmLogout: (changes) => {
-    const response = ipcRenderer.sendSync('simplenote:showMessageBoxSync', {
+    const response = ipcRenderer.sendSync('curnote:showMessageBoxSync', {
       type: 'warning',
       buttons: [
         'Export Unsynced Notes',
@@ -207,7 +207,7 @@ const electronAPI = {
   },
   confirm: ({ title, message, detail } = {}) => {
     try {
-      const response = ipcRenderer.sendSync('simplenote:showMessageBoxSync', {
+      const response = ipcRenderer.sendSync('curnote:showMessageBoxSync', {
         type: 'warning',
         buttons: ['Cancel', 'Delete'],
         defaultId: 0,
@@ -241,7 +241,6 @@ const electronAPI = {
       const notePaths = rawMeta.notePaths ?? {};
       const TurndownService = (() => {
         try {
-          // eslint-disable-next-line global-require
           return require('turndown');
         } catch {
           return null;
@@ -309,7 +308,6 @@ const electronAPI = {
       // (We still keep markdown in-memory for the editor.)
       const showdown = (() => {
         try {
-          // eslint-disable-next-line global-require
           return require('showdown');
         } catch {
           return null;

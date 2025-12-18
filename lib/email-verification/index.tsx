@@ -33,7 +33,7 @@ const EmailVerification: FunctionComponent<Props> = ({
   theme,
 }) => {
   const base64EncodedEmail = btoa(email || '');
-  const sendVerifyUrl: string = `https://app.simplenote.com/account/verify-email/${base64EncodedEmail}`;
+  const sendVerifyUrl: string = `https://app.curnote.com/account/verify-email/${base64EncodedEmail}`;
 
   if (accountVerification === 'pending') {
     recordEvent('verification_verify_screen_viewed');
@@ -60,7 +60,7 @@ const EmailVerification: FunctionComponent<Props> = ({
         <WarningIcon />
       </span>
       <h2>Review Your Account</h2>
-      <p>You are registered with Simplenote using the email:</p>
+      <p>You are registered with Curnote using the email:</p>
       <p className="email-verification__email">
         <strong>{email}</strong>
       </p>
@@ -73,7 +73,7 @@ const EmailVerification: FunctionComponent<Props> = ({
         <a
           target="_blank"
           rel="noreferrer"
-          href="https://app.simplenote.com/settings"
+          href="https://app.curnote.com/settings"
           onClick={() => recordEvent('verification_change_email_button_tapped')}
         >
           <button className="button button-borderless">Change Email</button>

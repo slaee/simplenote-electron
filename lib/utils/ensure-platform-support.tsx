@@ -21,8 +21,8 @@ if (missingDeps.length) {
   render(
     <BootWarning>
       <p>
-        Simplenote depends on a few web technologies to operate. Please make
-        sure that you have all of the following enabled in your browser.
+        Curnote depends on a few web technologies to operate. Please make sure
+        that you have all of the following enabled in your browser.
       </p>
       <ul>
         {deps.map(([name, hasIt]) => (
@@ -32,13 +32,13 @@ if (missingDeps.length) {
         ))}
       </ul>
       <p>
-        Many browsers disable some of these features in Private Mode. Simplenote
+        Many browsers disable some of these features in Private Mode. Curnote
         does not currently support running in Private Mode.
       </p>
     </BootWarning>,
     document.getElementById('root')
   );
   throw new Error(
-    `Simplenote is missing required dependencies: ${missingDeps.join(', ')}`
+    `Curnote is missing required dependencies: ${missingDeps.join(', ')}`
   );
 }

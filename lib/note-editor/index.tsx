@@ -8,7 +8,7 @@ import * as selectors from '../state/selectors';
 
 import * as S from '../state';
 import * as T from '../types';
-import SimplenoteCompactLogo from '../icons/simplenote-compact';
+import CurnoteCompactLogo from '../icons/curnote-compact';
 
 type StateProps = {
   allTags: Map<T.TagHash, T.Tag>;
@@ -108,7 +108,7 @@ export class NoteEditor extends Component<Props> {
     if (!note) {
       return (
         <div className="note-detail-placeholder">
-          <SimplenoteCompactLogo />
+          <CurnoteCompactLogo />
         </div>
       );
     }

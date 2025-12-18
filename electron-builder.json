@@ -1,6 +1,6 @@
 {
-  "productName": "Simplenote",
-  "appId": "com.automattic.simplenote",
+  "productName": "Curnote",
+  "appId": "com.automattic.curnote",
   "generateUpdatesFilesForAllChannels": true,
   "directories": {
     "output": "./release",
@@ -10,7 +10,7 @@
   "mac": {
     "icon": "./resources/images/app-icon.icns",
     "category": "public.app-category.social-networking",
-    "artifactName": "Simplenote-macOS-${version}.${ext}",
+    "artifactName": "Curnote-macOS-${version}.${ext}",
     "entitlements": "./resources/macos/entitlements.mac.plist",
     "entitlementsInherit": "./resources/macos/entitlements.mac.inherit.plist",
     "hardenedRuntime": true,
@@ -27,8 +27,8 @@
     "mergeASARs": false
   },
   "dmg": {
-    "title": "Simplenote Installer",
-    "artifactName": "Simplenote-macOS-${version}.${ext}",
+    "title": "Curnote Installer",
+    "artifactName": "Curnote-macOS-${version}.${ext}",
     "icon": "./resources/images/dmg-icon.icns",
     "iconSize": 150,
     "background": "./resources/images/dmg-background.png",
@@ -47,9 +47,9 @@
     ]
   },
   "win": {
-    "icon": "resources/images/simplenote.ico",
+    "icon": "resources/images/curnote.ico",
     "certificateSubjectName": "Automattic, Inc.",
-    "artifactName": "Simplenote-win-${version}-${arch}.${ext}",
+    "artifactName": "Curnote-win-${version}-${arch}.${ext}",
     "target": [
       {
         "target": "nsis",
@@ -58,12 +58,12 @@
     ]
   },
   "nsis": {
-    "artifactName": "Simplenote-win-${version}-${arch}.${ext}",
+    "artifactName": "Curnote-win-${version}-${arch}.${ext}",
     "deleteAppDataOnUninstall": true,
     "oneClick": false
   },
   "linux": {
-    "artifactName": "Simplenote-linux-${version}-${arch}.${ext}",
+    "artifactName": "Curnote-linux-${version}-${arch}.${ext}",
     "target": [
       {
         "target": "AppImage",
@@ -84,23 +84,23 @@
     ],
     "synopsis": "The simplest way to keep notes",
     "category": "Utility",
-    "executableName": "simplenote",
+    "executableName": "curnote",
     "desktop": {
-      "Name": "Simplenote",
-      "Comment": "Simplenote for Linux",
+      "Name": "Curnote",
+      "Comment": "Curnote for Linux",
       "GenericName": "Note Taking Application",
       "Type": "Application",
-      "Icon": "simplenote",
+      "Icon": "curnote",
       "StartupNotify": true,
       "Categories": "Utility"
     },
     "vendor": "Automattic, Inc.",
-    "maintainer": "Automattic, Inc. <support@simplenote.com>"
+    "maintainer": "Automattic, Inc. <support@curnote.com>"
   },
   "protocols": [
     {
-      "name": "simplenote",
-      "schemes": ["simplenote"]
+      "name": "curnote",
+      "schemes": ["curnote"]
     }
   ],
   "deb": {

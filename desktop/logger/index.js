@@ -62,7 +62,7 @@ module.exports = (namespace, options) => {
   const logPath = path.join(
     (app && app.getPath('appData')) || '',
     'logs',
-    'simplenote-main.log'
+    'curnote-main.log'
   );
 
   const baseOptions = {

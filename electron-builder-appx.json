@@ -1,13 +1,13 @@
 {
-  "productName": "Simplenote",
-  "appId": "com.automattic.simplenote",
+  "productName": "Curnote",
+  "appId": "com.automattic.curnote",
   "directories": {
     "output": "./release",
     "buildResources": "./resources"
   },
   "files": ["desktop", "dist", "shared"],
   "win": {
-    "icon": "resources/images/simplenote.ico",
+    "icon": "resources/images/curnote.ico",
     "target": [
       {
         "target": "appx",
@@ -16,18 +16,18 @@
     ]
   },
   "appx": {
-    "applicationId": "Simplenote",
-    "identityName": "22490Automattic.Simplenote",
+    "applicationId": "Curnote",
+    "identityName": "22490Automattic.Curnote",
     "publisher": "CN=E2E5A157-746D-4B04-9116-ABE5CB928306",
     "publisherDisplayName": "Automattic, Inc.",
     "backgroundColor": "transparent",
     "showNameOnTiles": true,
-    "artifactName": "Simplenote-win-store-${version}-${arch}.${ext}"
+    "artifactName": "Curnote-win-store-${version}-${arch}.${ext}"
   },
   "protocols": [
     {
-      "name": "simplenote",
-      "schemes": ["simplenote"]
+      "name": "curnote",
+      "schemes": ["curnote"]
     }
   ]
 }

@@ -65,7 +65,7 @@ export const stopSyncing = (): void => {
 
 const openIndexedDB = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
-    const r = indexedDB.open('simplenote_v2', DB_VERSION);
+    const r = indexedDB.open('curnote_v2', DB_VERSION);
 
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject();

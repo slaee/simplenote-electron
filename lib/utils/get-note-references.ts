@@ -4,7 +4,7 @@ import type * as T from '../types';
 
 import getNoteTitleAndPreview from './note-utils';
 
-const getNoteLink = (id: T.EntityId): string => `simplenote://note/${id}`;
+const getNoteLink = (id: T.EntityId): string => `curnote://note/${id}`;
 
 export const getNoteReferences = (state: S.State): T.EntityId[] => {
   const matches = new Set<T.EntityId>();

@@ -9,7 +9,7 @@ default_platform :mac
 
 PROJECT_ROOT_FOLDER = File.dirname(File.expand_path(__dir__))
 
-ENV_FILE_NAME = 'simplenote-electron.env'
+ENV_FILE_NAME = 'curnote-electron.env'
 USER_ENV_FILE_PATH = File.join(Dir.home, '.a8c-apps', ENV_FILE_NAME)
 
 # TODO: This is duplicated with `after_sign_hook.js`. It would be nice to have a single source of truth.
