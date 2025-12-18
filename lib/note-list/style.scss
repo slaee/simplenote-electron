@@ -269,14 +269,24 @@
 
   .note-list-item-title {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
     font-size: 16px;
     font-weight: 500;
     color: var(--primary-color);
 
-    & span {
+    .note-list-item-title-text {
+      flex: 1 1 auto;
+      min-width: 0;
       text-overflow: ellipsis;
       overflow: hidden;
+    }
+
+    .note-list-item-title-thumbnail {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
     }
   }
 
@@ -300,6 +310,33 @@
 
     &.note-list-item-pinned .note-list-item-pinner {
       color: var(--primary-color);
+    }
+  }
+
+  // When a title thumbnail is shown, apply a subtle horizontal fade to the
+  // title text so truncation blends into the thumbnail area.
+  &.note-list-item-has-title-thumbnail {
+    @supports (-webkit-mask-image: linear-gradient(to right, #000, transparent))
+      or (mask-image: linear-gradient(to right, #000, transparent)) {
+      .note-list-item-title-text {
+        text-overflow: clip;
+        -webkit-mask-image: linear-gradient(
+          to right,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 1) calc(100% - 24px),
+          rgba(0, 0, 0, 0) 100%
+        );
+        mask-image: linear-gradient(
+          to right,
+          rgba(0, 0, 0, 1) 0%,
+          rgba(0, 0, 0, 1) calc(100% - 24px),
+          rgba(0, 0, 0, 0) 100%
+        );
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+      }
     }
   }
 }
