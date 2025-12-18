@@ -118,6 +118,12 @@ const collection: A.Reducer<T.Collection> = (
       return { type: 'tag', tagName: action.tagName };
     case 'OPEN_FOLDER':
       return { type: 'folder', folderId: action.folderId };
+    case 'DELETE_FOLDER': {
+      // If the currently selected folder is deleted, fall back to All Notes.
+      return state.type === 'folder' && state.folderId === action.folderId
+        ? { type: 'all' }
+        : state;
+    }
     case 'RENAME_TAG': {
       if (state.type === 'tag' && state.tagName === action.oldTagName) {
         return { type: 'tag', tagName: action.newTagName };
@@ -254,6 +260,7 @@ const openedRevision: A.Reducer<[T.EntityId, number] | null> = (
   action
 ) => {
   switch (action.type) {
+    case 'CLOSE_NOTE':
     case 'CLOSE_REVISION':
     case 'RESTORE_NOTE_REVISION':
       return null;
@@ -334,6 +341,10 @@ const showNoteActions: A.Reducer<boolean> = (state = false, action) => {
     case 'NOTE_ACTIONS_TOGGLE':
       return !state;
 
+    case 'CLOSE_NOTE':
+    case 'DELETE_NOTE_FOREVER':
+    case 'NOTE_BUCKET_REMOVE':
+    case 'REMOTE_NOTE_DELETE_FOREVER':
     case 'NAVIGATION_TOGGLE':
     case 'NOTE_ACTIONS_CLOSE':
     case 'NOTE_INFO_TOGGLE':
@@ -353,6 +364,10 @@ const showNoteInfo: A.Reducer<boolean> = (state = false, action) => {
     case 'NOTE_INFO_TOGGLE':
       return !state;
 
+    case 'CLOSE_NOTE':
+    case 'DELETE_NOTE_FOREVER':
+    case 'NOTE_BUCKET_REMOVE':
+    case 'REMOTE_NOTE_DELETE_FOREVER':
     case 'NAVIGATION_TOGGLE':
     case 'NOTE_ACTIONS_TOGGLE':
     case 'SELECT_NOTE':
@@ -383,7 +398,11 @@ const showRevisions: A.Reducer<boolean> = (state = false, action) => {
   switch (action.type) {
     case 'REVISIONS_TOGGLE':
       return !state;
+    case 'CLOSE_NOTE':
     case 'CLOSE_REVISION':
+    case 'DELETE_NOTE_FOREVER':
+    case 'NOTE_BUCKET_REMOVE':
+    case 'REMOTE_NOTE_DELETE_FOREVER':
     case 'OPEN_NOTE':
     case 'SELECT_NOTE':
     case 'CREATE_NOTE_WITH_ID':

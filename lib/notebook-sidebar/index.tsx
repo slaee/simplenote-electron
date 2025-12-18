@@ -172,7 +172,7 @@ export const NotebookSidebar = ({
   const onDeleteNotebook = (notebookId: T.NotebookId, name: string) => {
     const ok = confirmDelete(
       'Delete notebook',
-      `Delete notebook "${name}"? This will delete all folders inside it.`
+      `Delete notebook "${name}"? All folders and notes inside will be moved to Trash.`
     );
     if (!ok) return;
     deleteNotebook(notebookId);
@@ -181,7 +181,7 @@ export const NotebookSidebar = ({
   const onDeleteFolder = (folderId: T.FolderId, name: string) => {
     const ok = confirmDelete(
       'Delete folder',
-      `Delete folder "${name}" and all subfolders?`
+      `Delete folder "${name}" and all subfolders? Notes inside will be moved to Trash.`
     );
     if (!ok) return;
     deleteFolder(folderId);

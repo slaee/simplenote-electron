@@ -37,6 +37,40 @@ export const middleware: S.Middleware =
           });
         }
 
+        // Trash notes inside the folder tree and reset UI state if needed.
+        // This prevents the editor from holding onto an "open" note whose container was deleted.
+        const notesToTrash: T.EntityId[] = [];
+        const foldersSet = new Set(toDelete.map(String));
+        state.data.notes.forEach((note, noteId) => {
+          const fid = note.folderId;
+          if (fid && foldersSet.has(String(fid))) {
+            if (!note.deleted) {
+              notesToTrash.push(noteId);
+            }
+          }
+        });
+
+        // If the currently opened note is going away, close it (and any dependent UI panels).
+        if (state.ui.openedNote) {
+          const opened = state.data.notes.get(state.ui.openedNote);
+          const openedFolderId = opened?.folderId;
+          if (openedFolderId && foldersSet.has(String(openedFolderId))) {
+            store.dispatch({ type: 'CLOSE_NOTE' } as any);
+          }
+        }
+
+        // If the user is currently viewing a folder that is being deleted, reset to All Notes.
+        if (
+          state.ui.collection.type === 'folder' &&
+          foldersSet.has(String(state.ui.collection.folderId))
+        ) {
+          store.dispatch({ type: 'SHOW_ALL_NOTES' } as any);
+        }
+
+        notesToTrash.forEach((noteId) =>
+          store.dispatch({ type: 'TRASH_NOTE', noteId } as any)
+        );
+
         // Dispatch child folder deletes first so notes get reassigned correctly for every folder.
         toDelete
           .filter((id) => id !== folderId)
@@ -54,8 +88,11 @@ export const middleware: S.Middleware =
       case 'DELETE_NOTEBOOK': {
         const notebookId = (action as any).notebookId as T.NotebookId;
         const folders = state.data.folders;
+        // Only delete root folders; the DELETE_FOLDER middleware will cascade through descendants.
         folders.forEach((folder, folderId) => {
-          if (folder.notebookId === notebookId) {
+          const isInNotebook = folder.notebookId === notebookId;
+          const isRoot = !folder.parentFolderId;
+          if (isInNotebook && isRoot) {
             store.dispatch({ type: 'DELETE_FOLDER', folderId } as any);
           }
         });
