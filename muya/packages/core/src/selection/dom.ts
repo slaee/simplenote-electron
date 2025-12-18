@@ -101,6 +101,31 @@ export function getOffsetOfParagraph(
     : offset + getOffsetOfParagraph(node.parentNode!, paragraph);
 }
 
+/**
+ * Get the raw-text offset **inside** a node for a given DOM boundary offset.
+ *
+ * - For TEXT_NODE: `offset` is a character offset, return as-is.
+ * - For ELEMENT_NODE: `offset` is a child index, so we sum the raw-text length
+ *   of all childNodes before that index (treating inline images as `data-raw`).
+ */
+export function getOffsetInNode(
+  node: Node,
+  offset: number,
+  blackList: string[] = []
+): number {
+  if (node.nodeType === Node.TEXT_NODE) return offset;
+
+  const childNodes = node.childNodes;
+  const end = Math.min(Math.max(0, offset), childNodes.length);
+  let count = 0;
+
+  for (let i = 0; i < end; i++) {
+    count += getTextContent(childNodes[i], blackList).length;
+  }
+
+  return count;
+}
+
 export function getNodeAndOffset(
   node: Node,
   offset: number
@@ -136,40 +161,23 @@ export function getNodeAndOffset(
         child.classList &&
         child.classList.contains(`${CLASS_NAMES.MU_INLINE_IMAGE}`)
       ) {
-        const imageContainer = child.querySelector(
-          `.${CLASS_NAMES.MU_IMAGE_CONTAINER}`
-        )!;
-        const hasImg = imageContainer.querySelector('img');
+        // Inline images are rendered as `contenteditable="false"` atomic nodes.
+        // Placing the caret *inside* them is unreliable (some browsers will drop the selection),
+        // so always place the caret before/after the wrapper element in the editable parent.
+        const start = count;
+        const end = count + textLength;
 
-        if (!hasImg) {
-          return {
-            node: child,
-            offset: 0,
-          };
-        }
-
-        if (count + textLength === offset) {
-          if (child.nextElementSibling) {
-            return {
-              node: child.nextElementSibling,
-              offset: 0,
-            };
-          } else {
-            return {
-              node: imageContainer,
-              offset: 1,
-            };
-          }
-        } else if (count === offset && count === 0) {
-          return {
-            node: imageContainer,
-            offset: 0,
-          };
+        // Snap to the closest edge when the requested offset falls inside the image token.
+        if (offset <= start) {
+          return { node, offset: i };
+        } else if (offset >= end) {
+          return { node, offset: i + 1 };
         } else {
-          return {
-            node: child,
-            offset: 0,
-          };
+          const distToStart = offset - start;
+          const distToEnd = end - offset;
+          return distToEnd <= distToStart
+            ? { node, offset: i + 1 }
+            : { node, offset: i };
         }
       } else {
         return getNodeAndOffset(child, offset - count);

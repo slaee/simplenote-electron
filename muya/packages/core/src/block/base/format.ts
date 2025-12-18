@@ -316,6 +316,102 @@ class Format extends Content {
   }
 
   /**
+   * Return the inline image element that is logically "after" the caret.
+   * This is mainly used to make `Delete` remove inline images rendered as
+   * `contenteditable="false"` atomic nodes.
+   */
+  private _getInlineImageAfterCaret(): HTMLElement | null {
+    const dom = this.domNode;
+    if (!dom) return null;
+
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    const range = selection.getRangeAt(0);
+    if (!range.collapsed) return null;
+
+    const { startContainer, startOffset } = range;
+
+    const firstDescendant = (node: Node): Node => {
+      let cur = node;
+      while (cur.firstChild) cur = cur.firstChild;
+      return cur;
+    };
+
+    const nextNode = (node: Node): Node | null => {
+      let cur: Node | null = node;
+      while (cur && cur !== dom) {
+        if (cur.nextSibling) return firstDescendant(cur.nextSibling);
+        cur = cur.parentNode;
+      }
+      return null;
+    };
+
+    const closestInlineImage = (node: Node | null): HTMLElement | null => {
+      if (!node) return null;
+      const el =
+        node.nodeType === Node.ELEMENT_NODE
+          ? (node as Element)
+          : (node.parentElement as Element | null);
+      const wrapper = el?.closest?.(
+        `.${CLASS_NAMES.MU_INLINE_IMAGE}`
+      ) as HTMLElement | null;
+      return wrapper && dom.contains(wrapper) ? wrapper : null;
+    };
+
+    // If caret is inside an inline image wrapper, decide whether it's at the beginning
+    // (meaning Delete should delete the image) or at the end (meaning Delete should delete
+    // the following content).
+    const containerEl =
+      startContainer.nodeType === Node.ELEMENT_NODE
+        ? (startContainer as Element)
+        : (startContainer.parentElement as Element | null);
+    const withinImage = containerEl?.closest?.(
+      `.${CLASS_NAMES.MU_INLINE_IMAGE}`
+    ) as HTMLElement | null;
+
+    if (withinImage && dom.contains(withinImage)) {
+      const imageContainer =
+        (withinImage.querySelector(
+          `.${CLASS_NAMES.MU_IMAGE_CONTAINER}`
+        ) as HTMLElement | null) ?? null;
+
+      const hasImg = !!imageContainer?.querySelector('img');
+      if (!hasImg) return withinImage;
+
+      const isAtStartOfImageContainer =
+        imageContainer && startContainer === imageContainer && startOffset <= 0;
+      const isAtStartOfImageWrapper =
+        startContainer === withinImage && startOffset <= 0;
+
+      if (isAtStartOfImageContainer || isAtStartOfImageWrapper) {
+        return withinImage;
+      }
+
+      // Treat caret as being after the image and only consider nodes after the wrapper.
+      return closestInlineImage(nextNode(withinImage));
+    }
+
+    // Find the DOM node immediately after the caret.
+    const nodeAfterCaret: Node | null = (() => {
+      if (startContainer.nodeType === Node.TEXT_NODE) {
+        const textLen = startContainer.textContent?.length ?? 0;
+        // Only consider "after" when at the end of the text node.
+        if (startOffset < textLen) return null;
+        return nextNode(startContainer);
+      }
+
+      // Element node: offset is a child index.
+      const child = startContainer.childNodes[startOffset];
+      if (child) return firstDescendant(child);
+
+      return nextNode(startContainer);
+    })();
+
+    return closestInlineImage(nodeAfterCaret);
+  }
+
+  /**
    * Convert a DOM selection boundary (node+offset) to a raw-text offset for this block.
    * This uses the same `getTextContent` logic that treats inline images as their `data-raw`.
    */
@@ -1458,6 +1554,18 @@ class Format extends Content {
       this._deleteSelectionRange(event);
       return;
     }
+
+    // Inline images are rendered as `contenteditable="false"` nodes, so native Delete
+    // often does nothing. Treat an image immediately after the caret as an atomic unit
+    // and delete it in one keypress.
+    const inlineImage = this._getInlineImageAfterCaret();
+    if (inlineImage) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.deleteImage(getImageInfo(inlineImage));
+      return;
+    }
+
     // Let input handler to handle this case.
     if (start.offset !== end.offset || start.offset !== text.length) return;
 

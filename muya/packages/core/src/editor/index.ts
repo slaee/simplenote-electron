@@ -14,7 +14,7 @@ import InlineRenderer from '../inlineRenderer';
 import { Search } from '../search';
 import Selection from '../selection';
 import JSONState from '../state';
-import { hasPick } from '../utils';
+import { hasPick, isKeyboardEvent } from '../utils';
 import logger from '../utils/logger';
 
 const debug = logger('editor:');
@@ -71,6 +71,18 @@ export class Editor {
     const { domNode } = this.muya;
 
     const eventHandler = (event: Event) => {
+      // Handle Ctrl/Cmd + A (select all) ourselves so non-editable inline widgets
+      // like images are included in the selection.
+      if (event.type === 'keydown' && isKeyboardEvent(event)) {
+        const { key, ctrlKey, metaKey } = event;
+        if ((ctrlKey || metaKey) && (key === 'a' || key === 'A')) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.selection.selectAll();
+          return;
+        }
+      }
+
       const { anchorBlock, isSelectionInSameBlock } =
         this.selection.getSelection() ?? {};
       // Fix issue that language input can not get focus when it's empty(Firefox only)

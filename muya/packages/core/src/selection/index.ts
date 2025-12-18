@@ -13,6 +13,7 @@ import {
   compareParagraphsOrder,
   findContentDOM,
   getNodeAndOffset,
+  getOffsetInNode,
   getOffsetOfParagraph,
 } from './dom';
 
@@ -182,7 +183,7 @@ class Selection {
     const aBlock = scrollPage?.firstContentInDescendant();
     const fBlock = scrollPage?.lastContentInDescendant();
 
-    if (aBlock == null || fBlock == null) return;
+    if (!aBlock || !fBlock) return;
 
     const cursor: ICursor = {
       anchor: { offset: 0 },
@@ -222,9 +223,13 @@ class Selection {
     const anchorPath = anchorBlock.path;
     const focusPath = focusBlock.path;
 
+    const blackList = [CLASS_NAMES.MU_MATH_RENDER, CLASS_NAMES.MU_RUBY_RENDER];
     const aOffset =
-      getOffsetOfParagraph(anchorNode, anchorDomNode) + anchorOffset;
-    const fOffset = getOffsetOfParagraph(focusNode, focusDomNode) + focusOffset;
+      getOffsetOfParagraph(anchorNode, anchorDomNode) +
+      getOffsetInNode(anchorNode, anchorOffset, blackList);
+    const fOffset =
+      getOffsetOfParagraph(focusNode, focusDomNode) +
+      getOffsetInNode(focusNode, focusOffset, blackList);
     const anchor = { offset: aOffset };
     const focus = { offset: fOffset };
 
@@ -562,7 +567,6 @@ class Selection {
         width: imageWrapper.offsetWidth,
         height: imageWrapper.offsetHeight,
       };
-      const imageInfo = getImageInfo(imageWrapper);
       eventCenter.emit('muya-image-selector', {
         block: contentBlock,
         reference,
